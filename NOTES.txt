@@ -1,0 +1,26 @@
+VERSION 0.6
+
+(1) Based on an example in nilearn I decided to try the following:
+
+   (1.1) Give as input to fastICA the octs_afterPCA instead of the fica_input. This was a bad idea.
+   (1.2) Check the dimensions of the input to the FastICA. Those are in agreement with the nilearn example
+   (1.3) Apply the normalization of the output ICA maps in the nilearn example. This seems to make my component maps have more commonly seen values than before. I am keeping this new
+         approach in this version 5.
+
+(2) Paralelization of the Meica-Report generation of component figures
+
+(3) Big change in the characterize_components function. I realized that the fits were wrong. Now at least it fits a line or a flat value as it should be. Results are much better.
+
+VERSION 0.7
+
+(1) Added extra input option to set the number of CPUs to use
+
+(2) Added extra input option to ask for additional files to be written to disk
+
+VERSION 0.8
+
+(1) Parallelized the characterize_components function
+
+(2) Added checking of dependencies
+	 TO DO: Add this functionality inside meBasics.py
+

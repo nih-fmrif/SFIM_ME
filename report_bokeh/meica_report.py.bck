@@ -1,0 +1,382 @@
+#!/usr/bin/env python
+"""
+Benjamin E. Gutierrez 9/15/2015
+
+Do some prelimary work for Javier on bokeh.
+
+Current big issue:  The linked brushing (being able to click on a component and see the same component on other plots) is difficult to work with
+		    I am still not enitely sure how to make linked brushing related to component # while being able to freely adjust the order of
+		    elements in the plot.  Will need to do more testing to fully understand what is going on.
+"""
+__version__="0.3"
+import sys
+import os
+
+path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../melib'))
+print "++ INFO [Main]: Using meBasic library located in: %s" % path
+if not path in sys.path:
+    sys.path.insert(1, path)
+del path
+import meBasics as meb
+import seaborn as sns
+import numpy as np
+import argparse
+from scipy.stats import rankdata
+from bokeh.models import ColumnDataSource, HoverTool, CustomJS, TapTool, Plot, Range1d
+from bokeh.document import Document
+from bokeh.plotting import figure, gridplot, output_file, show, hplot, vplot
+from scipy.stats import scoreatpercentile
+from glob import glob
+from bokeh.models.glyphs import ImageURL
+# ==============================================================================
+#             DEFINE SOME ADDITIONAL COLOR PALETTES COPIED FROM AFNI
+pal_grey256=["#fefefe","#fdfdfd","#fcfcfc","#fbfbfb","#fafafa","#f9f9f9","#f8f8f8","#f7f7f7","#f6f6f6","#f5f5f5","#f4f4f4","#f3f3f3","#f2f2f2","#f1f1f1","#f0f0f0","#efefef","#eeeeee",
+             "#ededed","#ececec","#ebebeb","#eaeaea","#e9e9e9","#e8e8e8","#e7e7e7","#e6e6e6","#e5e5e5","#e4e4e4","#e3e3e3","#e2e2e2","#e1e1e1","#e0e0e0","#dfdfdf","#dedede","#dddddd",
+             "#dcdcdc","#dbdbdb","#dadada","#d9d9d9","#d8d8d8","#d7d7d7","#d6d6d6","#d5d5d5","#d4d4d4","#d3d3d3","#d2d2d2","#d1d1d1","#d0d0d0","#cfcfcf","#cecece","#cdcdcd","#cccccc",
+             "#cbcbcb","#cacaca","#c9c9c9","#c8c8c8","#c7c7c7","#c6c6c6","#c5c5c5","#c4c4c4","#c3c3c3","#c2c2c2","#c1c1c1","#c0c0c0","#bfbfbf","#bfbfbf","#bebebe","#bdbdbd","#bcbcbc",
+             "#bbbbbb","#bababa","#b9b9b9","#b8b8b8","#b7b7b7","#b6b6b6","#b5b5b5","#b4b4b4","#b3b3b3","#b2b2b2","#b1b1b1","#b0b0b0","#afafaf","#aeaeae","#adadad","#acacac","#ababab",
+             "#aaaaaa","#a9a9a9","#a8a8a8","#a7a7a7","#a6a6a6","#a5a5a5","#a4a4a4","#a3a3a3","#a2a2a2","#a1a1a1","#a0a0a0","#9f9f9f","#9e9e9e","#9d9d9d","#9c9c9c","#9b9b9b","#9a9a9a",
+             "#999999","#989898","#979797","#969696","#959595","#949494","#939393","#929292","#919191","#909090","#8f8f8f","#8e8e8e","#8d8d8d","#8c8c8c","#8b8b8b","#8a8a8a","#898989",
+             "#888888","#878787","#868686","#858585","#848484","#838383","#828282","#818181","#808080","#7f7f7f","#7e7e7e","#7d7d7d","#7c7c7c","#7b7b7b","#7a7a7a","#797979","#787878",
+             "#777777","#767676","#757575","#747474","#737373","#727272","#717171","#707070","#6f6f6f","#6e6e6e","#6d6d6d","#6c6c6c","#6b6b6b","#6a6a6a","#696969","#686868","#676767",
+             "#666666","#656565","#646464","#636363","#626262","#616161","#606060","#5f5f5f","#5e5e5e","#5d5d5d","#5c5c5c","#5b5b5b","#5a5a5a","#595959","#585858","#575757","#565656",
+             "#555555","#545454","#535353","#525252","#515151","#505050","#4f4f4f","#4e4e4e","#4d4d4d","#4c4c4c","#4b4b4b","#4a4a4a","#494949","#484848","#474747","#464646","#454545",
+             "#444444","#434343","#424242","#414141","#404040","#404040","#3f3f3f","#3e3e3e","#3d3d3d","#3c3c3c","#3b3b3b","#3a3a3a","#393939","#383838","#373737","#363636","#353535",
+             "#343434","#333333","#323232","#313131","#303030","#2f2f2f","#2e2e2e","#2d2d2d","#2c2c2c","#2b2b2b","#2a2a2a","#292929","#282828","#272727","#262626","#252525","#242424",
+             "#232323","#222222","#212121","#202020","#1f1f1f","#1e1e1e","#1d1d1d","#1c1c1c","#1b1b1b","#1a1a1a","#191919","#181818","#171717","#161616","#151515","#141414","#131313",
+             "#121212","#111111","#101010","#0f0f0f","#0e0e0e","#0d0d0d","#0c0c0c","#0b0b0b","#0a0a0a","#090909","#080808","#070707","#060606","#050505","#040404","#030303","#020202","#010101"]
+pal_grey256_rev=["#010101","#020202","#030303","#040404","#050505","#060606","#070707","#080808","#090909","#0a0a0a","#0b0b0b","#0c0c0c","#0d0d0d","#0e0e0e","#0f0f0f","#101010","#111111",
+                 "#121212","#131313","#141414","#151515","#161616","#171717","#181818","#191919","#1a1a1a","#1b1b1b","#1c1c1c","#1d1d1d","#1e1e1e","#1f1f1f","#202020","#212121","#222222",
+                 "#232323","#242424","#252525","#262626","#272727","#282828","#292929","#2a2a2a","#2b2b2b","#2c2c2c","#2d2d2d","#2e2e2e","#2f2f2f","#303030","#313131","#323232","#333333",
+                 "#343434","#353535","#363636","#373737","#383838","#393939","#3a3a3a","#3b3b3b","#3c3c3c","#3d3d3d","#3e3e3e","#3f3f3f","#404040","#404040","#414141","#424242","#434343",
+                 "#444444","#454545","#464646","#474747","#484848","#494949","#4a4a4a","#4b4b4b","#4c4c4c","#4d4d4d","#4e4e4e","#4f4f4f","#505050","#515151","#525252","#535353","#545454",
+                 "#555555","#565656","#575757","#585858","#595959","#5a5a5a","#5b5b5b","#5c5c5c","#5d5d5d","#5e5e5e","#5f5f5f","#606060","#616161","#626262","#636363","#646464","#656565",
+                 "#666666","#676767","#686868","#696969","#6a6a6a","#6b6b6b","#6c6c6c","#6d6d6d","#6e6e6e","#6f6f6f","#707070","#717171","#727272","#737373","#747474","#757575","#767676",
+                 "#777777","#787878","#797979","#7a7a7a","#7b7b7b","#7c7c7c","#7d7d7d","#7e7e7e","#7f7f7f","#808080","#818181","#828282","#838383","#848484","#858585","#868686","#878787",
+                 "#888888","#898989","#8a8a8a","#8b8b8b","#8c8c8c","#8d8d8d","#8e8e8e","#8f8f8f","#909090","#919191","#929292","#939393","#949494","#959595","#969696","#979797","#989898",
+                 "#999999","#9a9a9a","#9b9b9b","#9c9c9c","#9d9d9d","#9e9e9e","#9f9f9f","#a0a0a0","#a1a1a1","#a2a2a2","#a3a3a3","#a4a4a4","#a5a5a5","#a6a6a6","#a7a7a7","#a8a8a8","#a9a9a9",
+                 "#aaaaaa","#ababab","#acacac","#adadad","#aeaeae","#afafaf","#b0b0b0","#b1b1b1","#b2b2b2","#b3b3b3","#b4b4b4","#b5b5b5","#b6b6b6","#b7b7b7","#b8b8b8","#b9b9b9","#bababa",
+                 "#bbbbbb","#bcbcbc","#bdbdbd","#bebebe","#bfbfbf","#bfbfbf","#c0c0c0","#c1c1c1","#c2c2c2","#c3c3c3","#c4c4c4","#c5c5c5","#c6c6c6","#c7c7c7","#c8c8c8","#c9c9c9","#cacaca",
+                 "#cbcbcb","#cccccc","#cdcdcd","#cecece","#cfcfcf","#d0d0d0","#d1d1d1","#d2d2d2","#d3d3d3","#d4d4d4","#d5d5d5","#d6d6d6","#d7d7d7","#d8d8d8","#d9d9d9","#dadada","#dbdbdb",
+                 "#dcdcdc","#dddddd","#dedede","#dfdfdf","#e0e0e0","#e1e1e1","#e2e2e2","#e3e3e3","#e4e4e4","#e5e5e5","#e6e6e6","#e7e7e7","#e8e8e8","#e9e9e9","#eaeaea","#ebebeb","#ececec",
+                 "#ededed","#eeeeee","#efefef","#f0f0f0","#f1f1f1","#f2f2f2","#f3f3f3","#f4f4f4","#f5f5f5","#f6f6f6","#f7f7f7","#f8f8f8","#f9f9f9","#fafafa","#fbfbfb","#fcfcfc","#fdfdfd","#fefefe"]
+pal_red2blue=["#ff0023","#ff001e","#ff0018","#ff0012","#ff000c","#ff1100","#ff1700","#ff1d00","#ff2200","#ff2800","#ff2d00","#ff3200","#ff3600","#ff3b00","#ff4000","#ff4400","#ff4900",
+              "#ff4d00","#ff5100","#ff5600","#ff5a00","#ff5e00","#ff6200","#ff6600","#ff6a00","#ff6e00","#ff7200","#ff7600","#ff7a00","#ff7e00","#ff8200","#ff8600","#ff8a00","#ff8d00",
+              "#ff9100","#ff9500","#ff9900","#ff9c00","#ffa000","#ffa400","#ffa700","#ffab00","#ffae00","#ffb200","#ffb500","#ffb900","#ffbc00","#ffc000","#ffc300","#ffc700","#ffca00",
+              "#ffce00","#ffd100","#ffd500","#ffd800","#ffdb00","#ffdf00","#ffe200","#ffe500","#ffe900","#ffec00","#ffef00","#fff300","#fff600","#fff900","#fffc00","#feff00","#fbff00",
+              "#f8ff00","#f5ff00","#f1ff00","#eeff00","#ebff00","#e7ff00","#e4ff00","#e1ff00","#ddff00","#daff00","#d7ff00","#d3ff00","#d0ff00","#ccff00","#c9ff00","#c6ff00","#c2ff00",
+              "#bfff00","#bbff00","#b8ff00","#b4ff00","#b1ff00","#adff00","#a9ff00","#a6ff00","#a2ff00","#9fff00","#9bff00","#97ff00","#93ff00","#90ff00","#8cff00","#88ff00","#84ff00",
+              "#81ff00","#7dff00","#79ff00","#75ff00","#71ff00","#6dff00","#69ff00","#65ff00","#61ff00","#5dff00","#58ff00","#54ff00","#50ff00","#4bff00","#47ff00","#43ff00","#3eff00",
+              "#39ff00","#35ff00","#30ff00","#2bff00","#26ff00","#20ff00","#1bff00","#15ff00","#0eff00","#00ff0e","#00ff15","#00ff1b","#00ff20","#00ff26","#00ff2b","#00ff30","#00ff35",
+              "#00ff39","#00ff3e","#00ff43","#00ff47","#00ff4b","#00ff50","#00ff54","#00ff58","#00ff5d","#00ff61","#00ff65","#00ff69","#00ff6d","#00ff71","#00ff75","#00ff79","#00ff7d",
+              "#00ff81","#00ff84","#00ff88","#00ff8c","#00ff90","#00ff93","#00ff97","#00ff9b","#00ff9f","#00ffa2","#00ffa6","#00ffa9","#00ffad","#00ffb1","#00ffb4","#00ffb8","#00ffbb",
+              "#00ffbf","#00ffc2","#00ffc6","#00ffc9","#00ffcc","#00ffd0","#00ffd3","#00ffd7","#00ffda","#00ffdd","#00ffe1","#00ffe4","#00ffe7","#00ffeb","#00ffee","#00fff1","#00fff5",
+              "#00fff8","#00fffb","#00fffe","#00fcff","#00f9ff","#00f6ff","#00f3ff","#00efff","#00ecff","#00e9ff","#00e5ff","#00e2ff","#00dfff","#00dbff","#00d8ff","#00d5ff","#00d1ff",
+              "#00ceff","#00caff","#00c7ff","#00c3ff","#00c0ff","#00bcff","#00b9ff","#00b5ff","#00b2ff","#00aeff","#00abff","#00a7ff","#00a4ff","#00a0ff","#009cff","#0099ff","#0095ff",
+              "#0091ff","#008dff","#008aff","#0086ff","#0082ff","#007eff","#007aff","#0076ff","#0072ff","#006eff","#006aff","#0066ff","#0062ff","#005eff","#005aff","#0056ff","#0051ff",
+              "#004dff","#0049ff","#0044ff","#0040ff","#003bff","#0036ff","#0032ff","#002dff","#0028ff","#0022ff","#001dff","#0017ff","#0011ff","#0c00ff","#1200ff","#1800ff","#1e00ff","#2300ff"]
+#                             END OF PALETTES DEFINITIONS
+# ==============================================================================
+
+# ==============================================================================
+#                              FUNCTION DEFINITIONS
+def generateMosaics_Sag(Cmaps_3D,Nstep=5,Nstart=None,Nend=None):
+    """
+    This function will generate 2D images with a subset of saggital and axial
+    slices for visualization purposes. 
+
+    Parameters:
+    ----------
+    
+    Returns:
+    --------
+    """
+    Nx,Ny,Nz,Nc    = Cmaps_3D.shape
+    if Nstart is None: Nstart=5
+    if Nend   is None: Nend=Ny-5
+    sagg_sel_slices = np.arange(Nstart,Nend,Nstep,dtype=int)
+    Nslices         = sagg_sel_slices.shape[0]
+    mosaic = np.zeros((Nc,Nz,Nslices*Ny))
+    print " + INFO [generateMosaic]: Number of slices = %d" % Nslices
+    for c in range(Nc):
+        aux_data = np.reshape(Cmaps_3D[sagg_sel_slices,:,::-1,c],(Nslices*Ny,Nz)).T
+        aux_max  = scoreatpercentile(aux_data,98)
+        aux_min  = scoreatpercentile(aux_data,2)
+        aux_data[aux_data>aux_max] = aux_max
+        aux_data[aux_data<aux_min] = aux_min
+        mosaic[c,:,:] = aux_data[::-1]
+    return mosaic
+#                         END OF FUNCTION DEFINITIONS
+# ==============================================================================
+
+# READ INPUT PARAMETERS
+# =====================
+parser = argparse.ArgumentParser('Options')
+parser.add_argument('-dir',   dest = 'dir',   help = 'directory where the output of meica was saved',default = None)
+parser.add_argument('-runID', dest = 'runID', help = 'data prefix',default = None)
+options = parser.parse_args()
+
+# Check that all necessary options were provided
+if options.dir is None:
+	print "++ ERROR: No working directory provided. Program will exit."
+	sys.exit()
+if options.runID is None:
+	print "++ ERROR: No run ID provided. Program will exit."
+	sys.exit()
+# Check if working directory exits
+if not os.path.isdir(options.dir):
+	print "++ ERROR: Working directory [%s] does not exist." % options.dir
+	print "++ ERROR: Exiting program now."
+	sys.exit()
+
+# If directory exits, check all necessary files are available.
+if not os.path.exists(options.dir+'comp_table.txt'):
+	print "++ ERROR: Component Table [%s] does not exists." % (options.dir+'comp_table.txt')
+	print "++ ERROR: Exiting program now."
+	sys.exit()
+if not os.path.exists(options.dir+'accepted.txt'):
+	print "++ ERROR: List of Accepted Components [%s] does not exists." % (options.dir+'accepted.txt')
+	print "++ ERROR: Exiting program now."
+	sys.exit()
+if not os.path.exists(options.dir+'meica_mix.1D'):
+	print "++ ERROR: Component Timeseries File [%s] does not exists." % (options.dir+'meica_mix.1D')
+	print "++ ERROR: Exiting program now."
+	sys.exit()
+if not os.path.exists(options.dir+options.runID+'.chComp.FR2.nii'):
+	print "++ ERROR: Per Component F_R2 Maps [%s] missing." % (options.dir+options.runID+'.chComp.FR2.nii')
+	print "++ ERROR: Exiting program now."
+	sys.exit()
+if not os.path.exists(options.dir+options.runID+'.chComp.FS0.nii'):
+	print "++ ERROR: Per Component F_S0 Maps [%s] missing." % (options.dir+options.runID+'.chComp.FS0.nii')
+	print "++ ERROR: Exiting program now."
+	sys.exit()
+Nstep=8
+Nstart=13
+
+# Load Inputs into memory
+# =======================
+accepted_components = np.loadtxt(options.dir+'accepted.txt').astype('int')
+comp_table          = np.loadtxt(options.dir+'comp_table.txt')
+comp_timeseries     = np.loadtxt(options.dir+'meica_mix.1D')
+comp_ffts           = np.loadtxt(options.dir+'meica_mix_fft.1D')
+freq_axis           = np.loadtxt(options.dir+'meica_mix_fft_freqs.1D')
+print comp_ffts.shape
+print comp_timeseries.shape
+
+Nt, Nc = comp_timeseries.shape
+FR2_maps,_,_        = meb.niiLoad(options.dir+options.runID+'.chComp.FR2.nii')
+FS0_maps,_,_        = meb.niiLoad(options.dir+options.runID+'.chComp.FS0.nii')
+ICA_maps,_,_        = meb.niiLoad(options.dir+options.runID+'_ICAmaps.nii')
+fica_psel           = np.zeros((Nc,))
+fica_psel[accepted_components] = 1
+
+FR2_Nx, FR2_Ny, FR2_Nz, FR2_Nc = FR2_maps.shape
+FS0_Nx, FS0_Ny, FS0_Nz, FS0_Nc = FS0_maps.shape
+ICA_Nx, ICA_Ny, ICA_Nz, ICA_Nc = ICA_maps.shape
+
+if (FR2_Nx == FS0_Nx == ICA_Nx) and (FR2_Ny == FS0_Ny == ICA_Ny) and (FR2_Nz == FS0_Nz == ICA_Nz) and (FR2_Nc == FS0_Nc ==ICA_Nc):
+    Nx = FR2_Nx
+    Ny = FR2_Ny
+    Nz = FR2_Nz
+    Nc = FR2_Nc
+else:
+    print "++ ERROR: The dimensions of the different maps do not match. Please correct."
+    print " +        FR2map.shape=$s" % str(FR2_maps.shape)
+    print " +        FS0map.shape=$s" % str(FS0_maps.shape)
+    sys.exit()
+
+print "++ INFO: Maps size=[%d,%d,%d,%d]" % (Nx,Ny,Nz,Nc)
+
+# Setting up output file
+# ======================
+output_file(options.runID+".html")
+
+# Reading the different features of interest
+# ==========================================
+Nc,Nf = comp_table.shape
+kappa = comp_table[:,1]
+rho   = comp_table[:,2]
+var   = comp_table[:,3]
+ratio = comp_table[:,7]
+cID   = comp_table[:,0]
+
+kappa_ranked = np.sort(kappa)[::-1]
+rho_ranked   = np.sort(rho)[::-1]
+var_ranked   = np.sort(var)[::-1]
+ratio_ranked = np.sort(ratio)[::-1]
+
+loc_by_kappa = Nc - rankdata(kappa)
+loc_by_rho   = Nc - rankdata(rho)
+loc_by_var   = Nc - rankdata(var)
+loc_by_ratio = Nc - rankdata(ratio)
+
+component_colormap      = { "1.0" : "#00ff00", "0.0" : "#ff0000"}
+component_color         = [component_colormap[str(x)] for x in fica_psel]
+component_status_labels = { "1.0" : "Accepted", "0.0" : "Rejected"}
+component_status        = [component_status_labels[str(x)] for x in fica_psel]
+
+Source = ColumnDataSource(data=dict(cID = cID, 
+                                    kappa = kappa, loc_by_kappa = loc_by_kappa, 
+                                    rho = rho, loc_by_rho = loc_by_rho, 
+                                    var = var, loc_by_var = loc_by_var, 
+                                    ratio = ratio, loc_by_ratio = loc_by_ratio,
+                                    comp_color  = component_color,
+                                    comp_status = component_status))
+
+# ==============================================================================
+#                                 FEATURE PLOTS
+# Feaute Plots Tools
+# ==================
+TOOLS = "tap,box_zoom,reset"
+HoverKappa = HoverTool(tooltips=[("Component", "@cID"),("Kappa",     "@kappa"),("Rho",       "@rho"),
+                       ("Variance",  "@var"),("Ratio",     "@ratio"),("Status", "$color[swatch]:comp_color")])
+HoverRho   = HoverTool(tooltips=[("Component", "@cID"),("Kappa",     "@kappa"),("Rho",       "@rho"),
+                       ("Variance",  "@var"),("Ratio",     "@ratio"),("Status", "$color[swatch]:comp_color")])
+HoverVar   = HoverTool(tooltips=[("Component", "@cID"),("Kappa",     "@kappa"),("Rho",       "@rho"),
+                       ("Variance",  "@var"),("Ratio",     "@ratio"),("Status", "$color[swatch]:comp_color")])
+HoverRatio = HoverTool(tooltips=[("Component", "@cID"),("Kappa",     "@kappa"),("Rho",       "@rho"),
+                       ("Variance",  "@var"),("Ratio",     "@ratio"),("Status", "$color[swatch]:comp_color")])
+                                    
+# Feature Plots
+# =============
+sp_kappa = figure(tools=[TOOLS, HoverKappa],width=400, height=300, y_axis_label='Kappa', toolbar_location='left')
+sp_kappa.circle('loc_by_kappa','kappa',size=5,color='comp_color',source=Source)
+sp_kappa.yaxis.axis_label_text_font_size = "12pt"
+
+sp_rho   = figure(tools=[TOOLS, HoverRho],width=400, height=300, y_axis_label='Rho', toolbar_location=None)
+sp_rho.circle('loc_by_rho','rho',size=5,color='comp_color',source=Source)
+sp_rho.yaxis.axis_label_text_font_size = "12pt"
+
+sp_var   = figure(tools=[TOOLS,HoverVar],width=400, height=300, y_axis_label='Variance', toolbar_location=None)
+sp_var.circle('loc_by_var','var',size=5,color='comp_color',source=Source)
+sp_var.yaxis.axis_label_text_font_size = "12pt"
+
+sp_ratio = figure(tools=[TOOLS,HoverRatio],width=400, height=300, y_axis_label='K/R Ratio', toolbar_location=None)
+sp_ratio.circle('loc_by_ratio','ratio',size=5,color='comp_color',source=Source)
+sp_ratio.yaxis.axis_label_text_font_size = "12pt"
+
+# ==============================================================================
+
+# ==============================================================================
+#                          TIME SERIES PLOTS
+
+# Load Default Data on Plots
+# ==========================
+default_ts_x  = range(Nt)
+default_ts_y  = np.zeros((Nt,))
+default_fft_x = freq_axis
+default_fft_y = np.zeros((Nt,))
+
+# Generate Plots
+# ==============
+sp_ts = figure(tools=[],toolbar_location=None, width=800,height=200, x_axis_label='Time [TR]', 
+               title='Component Timeseries',x_range=(0,Nt), title_text_font_size='12pt')
+sp_ts.xaxis.axis_label_text_font_size = "12pt"
+
+sp_fft = figure(tools=[],toolbar_location=None, width=800,height=200, x_axis_label='Frequency', 
+                title='Component Spectrum',x_range=(min(default_fft_x), max(default_fft_x)), title_text_font_size='12pt')
+sp_fft.xaxis.axis_label_text_font_size = "12pt"
+
+# Generate Data Sources for interactivity
+# =======================================
+timeseries_to_display = ColumnDataSource(data=dict(cID=cID, x=default_ts_x, y=default_ts_y))
+available_timeseries  = ColumnDataSource(data=dict(cID=cID, x=default_ts_x, y=comp_timeseries.T,comp_color  = component_color))
+sp_ts.line('x','y', source=timeseries_to_display, line_width=3)
+
+ffts_to_display = ColumnDataSource(data=dict(cID=cID, x=default_fft_x, y=default_fft_y))
+available_ffts  = ColumnDataSource(data=dict(cID=cID, x=default_fft_x, y=comp_ffts.T,comp_color  = component_color))
+sp_fft.line('x','y',source=ffts_to_display, line_width=3)
+# ==============================================================================
+
+# ==============================================================================
+#                    BRAIN MAP PLOTS
+# Convert Input maps into usable mosaics
+# ======================================
+#mosaic_R2      = generateMosaics_Sag(FR2_maps,Nstep,Nstart)
+#mosaic_S0      = generateMosaics_Sag(FS0_maps,Nstep,Nstart)
+#mosaic_ICA     = generateMosaics_Sag(ICA_maps,Nstep,Nstart)
+#_,mosaic_y,mosaic_x = mosaic_R2.shape
+#mosaic_ICA = np.reshape(mosaic_ICA,(Nc,mosaic_y*mosaic_x),order='F')
+callDir      = os.getcwd()
+dataDir      = callDir + '/' + options.dir
+ICAmap_dir   = dataDir+'/meica.'+options.runID+'/Report_Figures/'
+ICAmap_default_path = ICAmap_dir + 'AxSag_Component_XX.png'
+ICAmap_paths = glob(ICAmap_dir+'AxSag*.png')
+print  "++ INFO: Number of ICA Maps: %d" % len(ICAmap_paths)
+print  "++ INFO: Sample File Path: %s" % ICAmap_paths[0]
+available_ICAmaps = ColumnDataSource(data=dict(cID=cID,urls=ICAmap_paths))
+ICAmap_to_display = ColumnDataSource(data=dict(x=[0], y=[0], w=[1246], h=[86], url=[ICAmap_default_path]))
+xdr       = Range1d(start=-630, end=630)
+ydr       = Range1d(start=-45, end=40)
+ICAmapFigure = figure(tools=[],title="ICA maps", x_range=xdr, y_range=ydr,width=1600, height=400, x_axis_type=None, y_axis_type=None, toolbar_location=None, title_text_font_size='12pt')
+ICAmapImg = ImageURL(url="url", x="x", y="y", w="w", h="h", anchor="center")
+ICAmapFigure.add_glyph(ICAmap_to_display,ICAmapImg)
+ICAmapFigure.outline_line_color='#ffffff'
+#sp_ICAmap.add(ICAmapPlot)
+
+# ==============================================================================
+
+# ==============================================================================
+#                   JAVA SCRIPT INTERACTIVITY
+ 
+update_ts = CustomJS(args=dict(timeseries_to_display=timeseries_to_display, 
+                               comp_ts=available_timeseries, 
+                               ffts_to_display=ffts_to_display, 
+                               comp_fft=available_ffts,
+                               ICApaths=available_ICAmaps,
+                               ICAmap_to_display=ICAmap_to_display), 
+       code="""
+         var c            = cb_obj.get('selected')['1d'].indices
+         
+         var data2disp_ts = timeseries_to_display.get('data')
+         x2disp_ts        = data2disp_ts['x']
+         y2disp_ts        = data2disp_ts['y']
+         var comp_ts      = comp_ts.get('data')
+         ts_x             = comp_ts['x']
+         ts_y             = comp_ts['y'];
+         for (i = 0; i < x2disp_ts.length; i++) {
+            y2disp_ts[i]  = ts_y[c][i];
+         }
+         
+         var data2disp_fft = ffts_to_display.get('data')
+         x2disp_fft       = data2disp_fft['x']
+         y2disp_fft       = data2disp_fft['y']
+         var comp_fft     = comp_fft.get('data')
+         fft_x            = comp_fft['x']
+         fft_y            = comp_fft['y']
+         for (i=0; i < x2disp_fft.length; i++) {
+             y2disp_fft[i] = fft_y[c][i]
+         }
+         
+         var ICA2display  = ICAmap_to_display.get('data')
+         url2display      = ICA2display['url']
+         var availICAurls = ICApaths.get('data')
+         allICAurls       = availICAurls['urls']
+         url2display[0]   = allICAurls[c]
+         
+         ICAmap_to_display.trigger('change');
+         timeseries_to_display.trigger('change');
+         ffts_to_display.trigger('change');
+    """)
+
+# Additional Code to link with time series
+kappa_taptool          = sp_kappa.select(type=TapTool)
+kappa_taptool.callback = update_ts 
+rho_taptool          = sp_rho.select(type=TapTool)
+rho_taptool.callback = update_ts 
+var_taptool          = sp_var.select(type=TapTool)
+var_taptool.callback = update_ts 
+ratio_taptool          = sp_ratio.select(type=TapTool)
+ratio_taptool.callback = update_ts 
+
+# ==============================================================================
+
+# ==============================================================================
+#                       GRAPH   LAYOUT
+top_left  = hplot(sp_kappa, sp_rho)
+top_right = hplot(sp_var, sp_ratio)
+top       = hplot(top_left, top_right)
+middle    = hplot(sp_ts, sp_fft)
+p         = vplot(top, middle, ICAmapFigure)
+show(p)
+# ==============================================================================
