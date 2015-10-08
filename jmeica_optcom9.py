@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-__version__="0.9"
+__version__="0.10"
 import sys
 import os
 
