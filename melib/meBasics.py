@@ -10,7 +10,7 @@ import datetime
 from scipy.special        import legendre
 from sklearn.linear_model import LinearRegression
 from multiprocessing      import cpu_count,Pool
-
+from scipy.stats          import f
 def computeFFT(ts,TR):
     """
     This function computes the fft of the ICA representative timeseries and
@@ -293,59 +293,69 @@ def _characterize_this_component(item):
     outDir     = item['outDir']
     outPrefix  = item['outPrefix']
     F_MAX      = item['F_MAX']
+    Z_MAX      = item['Z_MAX']
     weight_map = item['weight_map']
     c_mask     = item['c_mask']
     writeOuts  = item['writeOuts']
     Ne, Nv     = B.shape
+    Kappa_mask = c_mask.copy()
+    Rho_mask   = c_mask.copy()
     # Write the fits for the differente echoes into file (very useful for debugging purposes)
     if writeOuts:
            niiwrite_nv(B.T,mask,outDir+outPrefix+'.chComp.EXTRA.Beta'+str(c).zfill(3)+'.nii',aff,head)
-    alpha = (B**2).sum(axis=0)                     #(Nv,)
-
     # S0 Model
     coeffs_S0        = (B*X1).sum(axis=0)/(X1**2).sum(axis=0)        #(Nv,)
-    
-    ##### DAN VERSION
-    #print "NEW THING SHAPE %s" % str((np.atleast_2d(X1[:,1])).shape)
-    #coeffs_S0 = np.linalg.lstsq(np.atleast_2d(X1[:,1]).T,B)
-    ### END OF DAN VERSION
+    #Rho_mask         = (c_mask + (coeffs_S0 <= 0)) > 0.5
+    estima_S0        = X1*np.tile(coeffs_S0,(Ne,1))
+    SSR_S0           = (estima_S0**2).sum(axis=0)
+    SSE_S0           = ((B-estima_S0)**2).sum(axis=0)  
+    dofSSR_S0        = 1
+    dofSSE_S0        = Ne -1
+    F_S0             = (SSR_S0/dofSSR_S0) / (SSE_S0/dofSSE_S0)
+    p_S0             = 1-f.cdf(F_S0,1,Ne-1)
+    Rho_mask       = (c_mask + (p_S0 > 0.05)) > 0.5
+    F_S0[F_S0>F_MAX] = F_MAX
+    F_S0_AllValues   = F_S0.copy()
     if writeOuts:
         niiwrite_nv((X1*np.tile(coeffs_S0,(Ne,1))).T,mask,outDir+outPrefix+'.chComp.EXTRA.S0Fit'+str(c).zfill(3)+'.nii',aff,head)
-    SSE_S0           = (B - X1*np.tile(coeffs_S0,(Ne,1)))**2         #(Ne,Nv)
-    SSE_S0           = SSE_S0.sum(axis=0)                            #(Nv,)
-    F_S0             = ((alpha - SSE_S0)/(SSE_S0))/((Ne-1)/(1)) #(Nv,)
-    F_S0_AllValues   = F_S0.copy()
-    #F_S0[F_S0>F_MAX] = F_MAX
     
     # R2 Model
-    #### DAN VERSION
-    #coeffs_R2 = np.linalg.lstsq(np.atleast_2d(X2[:,1]).T,B)
-    ### END OF DAN VERSION
+    # If beta_i = alpha_i*TE/mean(TE) + error --> To solve this RTO model (Regression Through the Origin), it is possible to obtain
+    # the alpha_i that provides the best fit (in a least-squares fashion) by simply using the equation below
+    # Please look at: Eishenhouer JG "Regression throught the origin" Technical Statistics (25):3, 2003 
     coeffs_R2        = (B*X2).sum(axis=0)/(X2**2).sum(axis=0)        #(Nv,)
+    estima_R2        = X2*np.tile(coeffs_R2,(Ne,1))
+    SSR_R2           = (estima_R2**2).sum(axis=0)
+    SSE_R2           = ((B-estima_R2)**2).sum(axis=0)  
+    dofSSR_R2        = 1
+    dofSSE_R2        = Ne -1
+    F_R2             = (SSR_R2/dofSSR_R2) / (SSE_R2/dofSSE_R2)
+    p_R2             = 1-f.cdf(F_R2,1,Ne-1)
+    Kappa_mask       = (c_mask + (p_R2 > 0.05)) > 0.5
+    F_R2[F_R2>F_MAX] = F_MAX
+    F_R2_AllValues   = F_R2.copy()
     if writeOuts:
         niiwrite_nv((X2*np.tile(coeffs_R2,(Ne,1))).T,mask,outDir+outPrefix+'.chComp.EXTRA.R2Fit'+str(c).zfill(3)+'.nii',aff,head)
-    SSE_R2           = (B - X2*np.tile(coeffs_R2,(Ne,1)))**2         #(Ne,Nv)
-    SSE_R2           = SSE_R2.sum(axis=0)                            #(Nv,)
-    F_R2             = ((alpha - SSE_R2)/(SSE_R2))/((Ne-1)/(1)) #(Nv,)
-    F_R2_AllValues   = F_R2.copy()
-    #F_R2[F_R2>F_MAX] = F_MAX
+    
     
     # Kappa Computation
+    #weight_map[weight_map>Z_MAX] = Z_MAX
+    #weight_map[weight_map<-Z_MAX] = -Z_MAX
     Kappa_map        = F_R2 * weight_map
-    Kappa_mask_arr   = ma.masked_array(Kappa_map,  mask=c_mask)
-    KappW_mask_arr   = ma.masked_array(weight_map, mask=c_mask)
+    Kappa_mask_arr   = ma.masked_array(Kappa_map,  mask=Kappa_mask)
+    KappW_mask_arr   = ma.masked_array(weight_map, mask=Kappa_mask)
     Kappa            = Kappa_mask_arr.mean() / KappW_mask_arr.mean()
-    #Kappa            = np.median(Kappa_mask_arr)/np.median(KappW_mask_arr)
+    
     #Rho Computation
     Rho_map          = F_S0 * weight_map
-    Rho_mask_arr     = ma.masked_array(Rho_map,    mask=c_mask)
-    RhoW_mask_arr    = ma.masked_array(weight_map, mask=c_mask)
+    Rho_mask_arr     = ma.masked_array(Rho_map,    mask=Rho_mask)
+    RhoW_mask_arr    = ma.masked_array(weight_map, mask=Rho_mask)
     Rho              = Rho_mask_arr.mean() / RhoW_mask_arr.mean()
-    #Rho              = np.median(Rho_mask_arr)/np.median(RhoW_mask_arr)
-    return {'Kappa':Kappa, 'Rho':Rho, 'Kappa_map':Kappa_map, 'Rho_map':Rho_map, 'FS0':F_S0_AllValues, 'FR2':F_R2_AllValues, 'cS0':coeffs_S0, 'cR2':coeffs_R2}
+    
+    return {'Kappa':Kappa, 'Rho':Rho, 'Kappa_map':Kappa_map, 'Rho_map':Rho_map, 'FS0':F_S0_AllValues, 'FR2':F_R2_AllValues, 'cS0':coeffs_S0, 'cR2':coeffs_R2,'Kappa_mask':Kappa_mask,'Rho_mask':Rho_mask}
     
 def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, voxelwiseQA, 
-                            Ncpus, ICA_maps_thr=1.0, discard_mask=None,writeOuts=False,outDir=None, outPrefix=None, mask=None, aff=None, head=None, Z_MAX=8, F_MAX=500):
+                            Ncpus, ICA_maps_thr=0.0, discard_mask=None,writeOuts=False,outDir=None, outPrefix=None, mask=None, aff=None, head=None, Z_MAX=8, F_MAX=500):
     """
     This function computes kappa, rho and variance for each ICA component.
     
@@ -391,6 +401,8 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
     ICA_maps_mask = ICA_maps.copy()
     ICA_maps_mask = (np.abs(ICA_maps)<ICA_maps_thr)  #(Nv,Nc)
     
+    niiwrite_nv(abs(ICA_maps_mask-1), mask,outDir+outPrefix+'.ICA.Zmaps.mask.nii',aff ,head)
+    
     # Compute overall variance in the ICA data
     totalvar     = (ICA_maps**2).sum()               # Single Value
     
@@ -399,7 +411,7 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
     # I tried this and gives exactly the same result
     # The 100 factor is there so that the b are kind of signal percent change
     beta       = 100*np.linalg.lstsq(mmix.T, (np.reshape(origTS_pc,(Nv*Ne,Nt))).T)[0].T 
-    beta       = np.reshape(beta,(Nv,Ne,Nc))                         # (Nv,Ne,Nc)
+    beta       = np.reshape(beta,(Nv,Ne,Nc))   ### <----------------------------------------  MAYBE PUT HERE AN ABS                      # (Nv,Ne,Nc)
     
     # Initialize results holder
     F_S0_maps  = np.zeros((Nv,Nc))
@@ -417,11 +429,11 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
     
     # Compute metrics per component
     X1 = np.ones((Ne,Nv)) 
-    X2 = np.repeat((-tes/tes.mean())[:,np.newaxis].T,Nv,axis=0).T   #(Ne,Nv)
+    X2 = np.repeat((tes/tes.mean())[:,np.newaxis].T,Nv,axis=0).T   #<--------------------   MAYBE NEEDS A MINUS SIGN   (Ne,Nv)
     print " +              Multi-process Characterize Components -> Ncpu = %d" % Ncpus
     pool   = Pool(processes=Ncpus)
     result = pool.map(_characterize_this_component, [{
-                'c':          c,   'F_MAX':F_MAX,
+                'c':          c,   'F_MAX':F_MAX, 'Z_MAX':Z_MAX,
                 'X1':         X1,  'X2':X2, 
                 'aff':        aff, 'head':head, 'outDir':outDir, 'outPrefix':outPrefix, 
                 'mask':       mask,
@@ -430,7 +442,6 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
                 'c_mask':     ((discard_mask + ICA_maps_mask[:,c]) > 0.5),
                 'writeOuts':  writeOuts
                 } for c in np.arange(Nc)]) 
-    
     features = np.zeros((Nc,7))
                             
     for c in range(Nc):
@@ -441,8 +452,8 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
         F_R2_maps[:,c]    = result[c]['FR2']
         c_S0_maps[:,c]    = result[c]['cS0']
         c_R2_maps[:,c]    = result[c]['cR2']
-        Kappa_masks[:,c]  = ((discard_mask + ICA_maps_mask[:,c]) > 0.5)
-        Rho_masks[:,c]    = ((discard_mask + ICA_maps_mask[:,c]) > 0.5)        
+        Kappa_masks[:,c]  = result[c]['Kappa_mask']
+        Rho_masks[:,c]    = result[c]['Rho_mask']      
         features[c,0]    = c
         features[c,1]    = result[c]['Kappa']
         features[c,2]    = result[c]['Rho']
@@ -460,6 +471,7 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
     niiwrite_nv(c_R2_maps , mask,outDir+outPrefix+'.chComp.cR2.nii',aff ,head)
     niiwrite_nv(Kappa_maps, mask,outDir+outPrefix+'.chComp.Kappa.nii',aff ,head)
     niiwrite_nv(abs(Kappa_masks-1),mask,outDir+outPrefix+'.chComp.Kappa_mask.nii',aff ,head)
+    niiwrite_nv(abs(Rho_masks-1),mask,outDir+outPrefix+'.chComp.Rho_mask.nii',aff ,head)
     niiwrite_nv(Rho_maps,   mask,outDir+outPrefix+'.chComp.Rho.nii',aff ,head)
     niiwrite_nv(Weight_maps,mask,outDir+outPrefix+'.chComp.weightMaps.nii',aff ,head)   
     return features

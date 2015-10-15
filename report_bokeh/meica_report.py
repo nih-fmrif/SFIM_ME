@@ -108,10 +108,24 @@ freq_axis           = np.loadtxt(os.path.join(meicaDir,'meica_mix_fft_freqs.1D')
 
 FR2_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.FR2.nii')
 print "++ INFO [Main]: FR2 Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.FR2.nii',FR2_maps.shape)
+cR2_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.cR2.nii')
+print "++ INFO [Main]: FR2 Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.cR2.nii',cR2_maps.shape)
 FS0_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.FS0.nii')
-print "++ INFO [Main]: FS0 Maps [%s] loaded successfully." % (options.dir+options.runID+'.chComp.FS0.nii')
-Kappa_masks,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.Kappa_mask.nii')
+print "++ INFO [Main]: FS0 Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.FS0.nii',FS0_maps.shape)
+cS0_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.cS0.nii')
+print "++ INFO [Main]: FS0 Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.cS0.nii',cS0_maps.shape)
+KM_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.Kappa_mask.nii')
 print "++ INFO [Main]: Kappa Masks [%s] loaded successfully." % (options.dir+options.runID+'.chComp.Kappa_mask.nii')
+RM_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.Rho_mask.nii')
+print "++ INFO [Main]: Rho Masks [%s] loaded successfully." % (options.dir+options.runID+'.chComp.Rho_mask.nii')
+Kappa_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.Kappa.nii')
+print "++ INFO [Main]: Kappa Maps [%s] loaded successfully." % (options.dir+options.runID+'.chComp.Kappa.nii')
+Rho_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.Rho.nii')
+print "++ INFO [Main]: Rho Maps [%s] loaded successfully." % (options.dir+options.runID+'.chComp.Rho.nii')
+ICA_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.ICA.Zmaps.nii')
+print "++ INFO [Main]: ICA Maps [%s] loaded successfully." % (options.dir+options.runID+'.ICA.Zmaps.nii')
+ICAM_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.ICA.Zmaps.mask.nii')
+print "++ INFO [Main]: ICA Masks [%s] loaded successfully." % (options.dir+options.runID+'.ICA.Zmaps.mask.nii')
 
 Nt, Nc              = comp_timeseries.shape
 fica_psel           = np.zeros((Nc,))
@@ -259,53 +273,129 @@ ICAmapFigure.outline_line_color='#ffffff'
 
 # ==============================================================================
 #                     TABS FOR HISTOGRAMS AND BOX PLOTS
+Nbins=200
+FR2_hist=np.zeros((Nc,Nbins))
+FR2_Ledges=np.zeros((Nc,Nbins))
+FR2_Redges=np.zeros((Nc,Nbins))
+FS0_hist=np.zeros((Nc,Nbins))
+FS0_Ledges=np.zeros((Nc,Nbins))
+FS0_Redges=np.zeros((Nc,Nbins))
 
-## Let's compute the histograms
-#for c in range(Nc)
-#    aux_fr2_data  = FR2_maps[:,:,:,c]
-#    aux_fr2_mask  = (Kappa_masks[:,:,:,c]==1)
-#    aux_fr2_input = aux_fr2_data[aux_fr2_mask]
-#    aux_fr2_
-#fr2_data =[] 
-#fr2_idx  =[]
-#for c in range(Nc):
-#    aux_fr2_data  = FR2_maps[:,:,:,c]
-#    aux_fr2_mask  = (Kappa_masks[:,:,:,c]==1)
-#    aux_fr2_input = aux_fr2_data[aux_fr2_mask]
-#    fr2_data.append(aux_fr2_input)
-#    aux_fr2_Nv    = aux_fr2_input.shape
-#    fr2_idx       = fr2_idx.append(np.repeat(c,aux_fr2_Nv))
-#fr2_na  = np.vstack((fr2_data,fr2_idx)).T
-#fr2_df  = pd.DataFrame(fr2_na,columns=['data','cid'])
-#fr2_his = Histogram(fr2_df,values='data')
-#fr2_bpl = BoxPlot(fr2_df,values='data',label='cid')
-#fr2_dot = figure(plot_width=600,plot_height=300)
+cR2_hist=np.zeros((Nc,Nbins))
+cR2_Ledges=np.zeros((Nc,Nbins))
+cR2_Redges=np.zeros((Nc,Nbins))
+cS0_hist=np.zeros((Nc,Nbins))
+cS0_Ledges=np.zeros((Nc,Nbins))
+cS0_Redges=np.zeros((Nc,Nbins))
 
+Kappa_hist=np.zeros((Nc,Nbins))
+Kappa_Ledges=np.zeros((Nc,Nbins))
+Kappa_Redges=np.zeros((Nc,Nbins))
+Rho_hist=np.zeros((Nc,Nbins))
+Rho_Ledges=np.zeros((Nc,Nbins))
+Rho_Redges=np.zeros((Nc,Nbins))
 
-#aux_data  = FR2_maps[:,:,:,10]
-#aux_mask  = (Kappa_masks[:,:,:,10]==1)
-#aux_input = aux_data[aux_mask]
-#aux_Nv    = aux_input.shape
-#print "[%f,%f]" % (aux_input.min(),aux_input.max())
-#aux_hist, aux_edges = np.histogram(aux_data,bins=200)
-#aux_PD = pd.DataFrame(np.vstack((aux_input,np.repeat(1,aux_Nv))).T,columns=['data','id'])
-#fr2_his = figure(plot_width=600,plot_height=300)
-#fr2_his.quad(top=aux_hist, bottom=0, left=aux_edges[:-1], right=aux_edges[1:], line_color="#033649")
-#fr2_bpl = BoxPlot(aux_PD,values='data',label='id')
-#fr2_sel = Select(title="Component ID:", value="000", options=[str(c).zfill(3) for c in range(Nc)])
-#fr2_dot = figure(plot_width=600,plot_height=300)
-#fr2_dot.circle(x=aux_input,y=aux_input)
+ICA_hist=np.zeros((Nc,Nbins))
+ICA_Ledges=np.zeros((Nc,Nbins))
+ICA_Redges=np.zeros((Nc,Nbins))
 
-#fr2_all = vplot(fr2_sel,fr2_his,fr2_bpl)
-#fr2_tab = Panel(child=fr2_all, title='FR2') 
+for c in range(Nc):
+    # BOLD Model
+    aux_mask_Kappa = np.squeeze(KM_maps[:,:,:,c])
+    aux_mask_Kappa = (aux_mask_Kappa==1)
+    aux_FR2  = np.squeeze(FR2_maps[:,:,:,c])
+    aux_input = aux_FR2[aux_mask_Kappa]
+    FR2_hist[c,:], aux = np.histogram(aux_input,Nbins, density=True)
+    FR2_Ledges[c,:]=aux[:-1]
+    FR2_Redges[c,:]=aux[1:]
+    
+    aux_cR2  = np.squeeze(cR2_maps[:,:,:,c])
+    aux_input = aux_cR2[aux_mask_Kappa]
+    cR2_hist[c,:], aux = np.histogram(aux_input,Nbins,density=True)
+    cR2_Ledges[c,:]=aux[:-1]
+    cR2_Redges[c,:]=aux[1:]
+    
+    aux_Kappa = np.squeeze(Kappa_maps[:,:,:,c])
+    aux_input = aux_Kappa[aux_mask_Kappa]
+    Kappa_hist[c,:], aux = np.histogram(aux_input, Nbins, density=True);
+    Kappa_Ledges[c,:] = aux[:-1]
+    Kappa_Redges[c,:] = aux[1:]
+    
+    # Non-BOLD Model
+    aux_mask_Rho = np.squeeze(RM_maps[:,:,:,c])
+    aux_mask_Rho = (aux_mask_Rho==1)
+    aux_FS0  = np.squeeze(FS0_maps[:,:,:,c])
+    aux_input = aux_FS0[aux_mask_Rho]
+    FS0_hist[c,:], aux = np.histogram(aux_input,Nbins,density=True)
+    FS0_Ledges[c,:]=aux[:-1]
+    FS0_Redges[c,:]=aux[1:]
+    
+    aux_cS0  = np.squeeze(cS0_maps[:,:,:,c])
+    aux_input = aux_cS0[aux_mask_Rho]
+    cS0_hist[c,:], aux = np.histogram(aux_input,Nbins,density=True)
+    cS0_Ledges[c,:]=aux[:-1]
+    cS0_Redges[c,:]=aux[1:]
+    
+    aux_Rho   = np.squeeze(Rho_maps[:,:,:,c])
+    aux_input = aux_Rho[aux_mask_Rho]
+    Rho_hist[c,:], aux = np.histogram(aux_input, Nbins, density=True)
+    Rho_Ledges[c,:] = aux[:-1]
+    Rho_Redges[c,:] = aux[1:]
+    
+    #ICA Maps
+    aux_mask_ICA = np.squeeze(ICAM_maps[:,:,:,c])
+    aux_mask_ICA = (aux_mask_ICA==1)
+    aux_ICA   = np.squeeze(ICA_maps[:,:,:,c])
+    aux_input = aux_ICA[aux_mask_ICA] ##### <--------------- Need to think of appropriate masking here
+    ICA_hist[c,:], aux = np.histogram(aux_input, Nbins, density=True)
+    ICA_Ledges[c,:] = aux[:-1]
+    ICA_Redges[c,:] = aux[1:]
+    
+    
+Hist_dis_cs = ColumnDataSource(data=dict(FR2_hist=np.ones((Nbins,)),   FR2_Redges=range(Nbins),   FR2_Ledges=range(Nbins),
+                                         FS0_hist=np.ones((Nbins,)),   FS0_Redges=range(Nbins),   FS0_Ledges=range(Nbins),
+                                         cR2_hist=np.ones((Nbins,)),   cR2_Redges=range(Nbins),   cR2_Ledges=range(Nbins),
+                                         cS0_hist=np.ones((Nbins,)),   cS0_Redges=range(Nbins),   cS0_Ledges=range(Nbins),
+                                         Kappa_hist=np.ones((Nbins,)), Kappa_Redges=range(Nbins), Kappa_Ledges=range(Nbins),
+                                         Rho_hist=np.ones((Nbins,)),   Rho_Redges=range(Nbins),   Rho_Ledges=range(Nbins),
+                                         ICA_hist=np.ones((Nbins,)),   ICA_Redges=range(Nbins),   ICA_Ledges=range(Nbins)))
+                                             
+Hist_avl_cs  = ColumnDataSource(data=dict(FR2_hist=FR2_hist,     FR2_Redges=FR2_Redges,     FR2_Ledges=FR2_Ledges,
+                                          FS0_hist=FS0_hist,     FS0_Redges=FS0_Redges,     FS0_Ledges=FS0_Ledges,
+                                          cR2_hist=cR2_hist,     cR2_Redges=cR2_Redges,     cR2_Ledges=cR2_Ledges,
+                                          cS0_hist=cS0_hist,     cS0_Redges=cS0_Redges,     cS0_Ledges=cS0_Ledges,
+                                          Kappa_hist=Kappa_hist, Kappa_Redges=Kappa_Redges, Kappa_Ledges=Kappa_Ledges,
+                                          Rho_hist=cS0_hist,     Rho_Redges=Rho_Redges,     Rho_Ledges=Rho_Ledges,
+                                          ICA_hist=ICA_hist,     ICA_Redges=ICA_Redges,     ICA_Ledges=ICA_Ledges,
+                                          ))
 
-#fs0_fig = figure(plot_width=300,plot_height=800)
-#fs0_sel = Select(title="Component ID:", value="010", options=[str(c).zfill(3) for c in range(Nc)])
-#fs0_all = vplot(fs0_sel,fs0_fig)
-#fs0_tab = Panel(child=fs0_all, title='FS0') 
+F_Hists = figure(width=500, height=300, title='F-stat Histograms',title_text_font_size='12pt',x_axis_label='FS0 or FR2',y_axis_label='Density')
+F_Hists.xaxis.axis_label_text_font_size = "12pt"
+F_Hists.yaxis.axis_label_text_font_size = "12pt"
+F_Hists.quad(top='FR2_hist',bottom=0,left='FR2_Ledges',right='FR2_Redges', source=Hist_dis_cs, line_color='green', fill_color='green', alpha=0.5, legend='F R2')
+F_Hists.quad(top='FS0_hist',bottom=0,left='FS0_Ledges',right='FS0_Redges', source=Hist_dis_cs, line_color='red', fill_color='red', alpha=0.5, legend='F S0')
+#F_Hists.line('FR2_Ledges','FR2_hist',source=Hist_dis_cs, line_width=3, color='green')
+#F_Hists.line('FS0_Ledges','FS0_hist',source=Hist_dis_cs, line_width=3, color='red')
+C_Hists = figure(width=500, height=300, title='TE-Fits Histograms',title_text_font_size='12pt',x_axis_label='cS0 or cR2',y_axis_label='Density')
+C_Hists.xaxis.axis_label_text_font_size = "12pt"
+C_Hists.yaxis.axis_label_text_font_size = "12pt"
+C_Hists.quad(top='cR2_hist',bottom=0,left='cR2_Ledges',right='cR2_Redges', source=Hist_dis_cs, line_color='green', fill_color='green', alpha=0.5, legend='c R2')
+C_Hists.quad(top='cS0_hist',bottom=0,left='cS0_Ledges',right='cS0_Redges', source=Hist_dis_cs, line_color='red', fill_color='red', alpha=0.5, legend='c S0')
+FC_Tab01_C = Panel(child=C_Hists, title='Fit Coefficients')
+FC_Tab02_F = Panel(child=F_Hists, title='F-stat')
+FC_Tabs    = Tabs(tabs=[FC_Tab01_C, FC_Tab02_F])
 
-#tabs = Tabs(tabs=[fr2_tab, fs0_tab])
- 
+KR_Hists = figure(width=500, height=300, title='Kappa/Rho Histograms',title_text_font_size='12pt',x_axis_label='Kappa or Rho',y_axis_label='Density')
+KR_Hists.xaxis.axis_label_text_font_size = "12pt"
+KR_Hists.yaxis.axis_label_text_font_size = "12pt"
+KR_Hists.quad(top='Kappa_hist',bottom=0, left='Kappa_Ledges',right='Kappa_Redges', source=Hist_dis_cs, line_color='green', fill_color='green', alpha=0.5, legend='Kappa')
+KR_Hists.quad(top='Rho_hist',  bottom=0, left='Rho_Ledges',  right='Rho_Redges',   source=Hist_dis_cs, line_color='red', fill_color='red', alpha=0.5, legend='Rho')
+
+ICA_Hists = figure(width=500, height=300, title='ICA Z-Map Histograms',title_text_font_size='12pt',x_axis_label='ICA Z-score',y_axis_label='Density')
+ICA_Hists.xaxis.axis_label_text_font_size = "12pt"
+ICA_Hists.yaxis.axis_label_text_font_size = "12pt"
+ICA_Hists.quad(top='ICA_hist',bottom=0, left='ICA_Ledges',right='ICA_Redges', source=Hist_dis_cs, line_color='blue', fill_color='blue', alpha=0.5, legend='ICA Z-val')
+
 # ==============================================================================
 
 # ==============================================================================
@@ -316,7 +406,9 @@ update_ts = CustomJS(args=dict(timeseries_to_display=timeseries_to_display,
                                ffts_to_display=ffts_to_display, 
                                comp_fft=available_ffts,
                                ICApaths=available_ICAmaps,
-                               ICAmap_to_display=ICAmap_to_display), 
+                               ICAmap_to_display=ICAmap_to_display,
+                               Hist_dis_cs=Hist_dis_cs,Hist_avl_cs=Hist_avl_cs
+                               ), 
        code="""
          var c            = cb_obj.get('selected')['1d'].indices
          
@@ -346,6 +438,74 @@ update_ts = CustomJS(args=dict(timeseries_to_display=timeseries_to_display,
          allICAurls       = availICAurls['urls']
          url2display[0]   = allICAurls[c]
          
+         var Hist2disp = Hist_dis_cs.get('data')
+         var HistAvl   = Hist_avl_cs.get('data')
+         FR2hist2disp_y   = Hist2disp['FR2_hist']
+         FR2hist2disp_re  = Hist2disp['FR2_Redges']
+         FR2hist2disp_le  = Hist2disp['FR2_Ledges']
+         FR2histAvl_y     = HistAvl['FR2_hist']
+         FR2histAvl_re    = HistAvl['FR2_Redges']
+         FR2histAvl_le    = HistAvl['FR2_Ledges']
+         FS0hist2disp_y   = Hist2disp['FS0_hist']
+         FS0hist2disp_re  = Hist2disp['FS0_Redges']
+         FS0hist2disp_le  = Hist2disp['FS0_Ledges']
+         FS0histAvl_y     = HistAvl['FS0_hist']
+         FS0histAvl_re    = HistAvl['FS0_Redges']
+         FS0histAvl_le    = HistAvl['FS0_Ledges']
+         cR2hist2disp_y   = Hist2disp['cR2_hist']
+         cR2hist2disp_re  = Hist2disp['cR2_Redges']
+         cR2hist2disp_le  = Hist2disp['cR2_Ledges']
+         cR2histAvl_y     = HistAvl['cR2_hist']
+         cR2histAvl_re    = HistAvl['cR2_Redges']
+         cR2histAvl_le    = HistAvl['cR2_Ledges']
+         cS0hist2disp_y   = Hist2disp['cS0_hist']
+         cS0hist2disp_re  = Hist2disp['cS0_Redges']
+         cS0hist2disp_le  = Hist2disp['cS0_Ledges']
+         cS0histAvl_y     = HistAvl['cS0_hist']
+         cS0histAvl_re    = HistAvl['cS0_Redges']
+         cS0histAvl_le    = HistAvl['cS0_Ledges']
+         Kappahist2disp_y   = Hist2disp['Kappa_hist']
+         Kappahist2disp_re  = Hist2disp['Kappa_Redges']
+         Kappahist2disp_le  = Hist2disp['Kappa_Ledges']
+         KappahistAvl_y     = HistAvl['Kappa_hist']
+         KappahistAvl_re    = HistAvl['Kappa_Redges']
+         KappahistAvl_le    = HistAvl['Kappa_Ledges']
+         Rhohist2disp_y   = Hist2disp['Rho_hist']
+         Rhohist2disp_re  = Hist2disp['Rho_Redges']
+         Rhohist2disp_le  = Hist2disp['Rho_Ledges']
+         RhohistAvl_y     = HistAvl['Rho_hist']
+         RhohistAvl_re    = HistAvl['Rho_Redges']
+         RhohistAvl_le    = HistAvl['Rho_Ledges']
+         ICAhist2disp_y   = Hist2disp['ICA_hist']
+         ICAhist2disp_re  = Hist2disp['ICA_Redges']
+         ICAhist2disp_le  = Hist2disp['ICA_Ledges']
+         ICAhistAvl_y     = HistAvl['ICA_hist']
+         ICAhistAvl_re    = HistAvl['ICA_Redges']
+         ICAhistAvl_le    = HistAvl['ICA_Ledges']
+         for (i = 0; i < FR2hist2disp_y.length; i++) {
+            FR2hist2disp_y[i]     = FR2histAvl_y[c][i];
+            FR2hist2disp_re[i]    = FR2histAvl_re[c][i];
+            FR2hist2disp_le[i]    = FR2histAvl_le[c][i];
+            FS0hist2disp_y[i]     = FS0histAvl_y[c][i];
+            FS0hist2disp_re[i]    = FS0histAvl_re[c][i];
+            FS0hist2disp_le[i]    = FS0histAvl_le[c][i];
+            cR2hist2disp_y[i]     = cR2histAvl_y[c][i];
+            cR2hist2disp_re[i]    = cR2histAvl_re[c][i];
+            cR2hist2disp_le[i]    = cR2histAvl_le[c][i];
+            cS0hist2disp_y[i]     = cS0histAvl_y[c][i];
+            cS0hist2disp_re[i]    = cS0histAvl_re[c][i];
+            cS0hist2disp_le[i]    = cS0histAvl_le[c][i];
+            Kappahist2disp_y[i]   = KappahistAvl_y[c][i];
+            Kappahist2disp_re[i]  = KappahistAvl_re[c][i];
+            Kappahist2disp_le[i]  = KappahistAvl_le[c][i];
+            Rhohist2disp_y[i]     = RhohistAvl_y[c][i];
+            Rhohist2disp_re[i]    = RhohistAvl_re[c][i];
+            Rhohist2disp_le[i]    = RhohistAvl_le[c][i];
+            ICAhist2disp_y[i]     = ICAhistAvl_y[c][i];
+            ICAhist2disp_re[i]    = ICAhistAvl_re[c][i];
+            ICAhist2disp_le[i]    = ICAhistAvl_le[c][i];
+        }
+         Hist_dis_cs.trigger('change'); 
          ICAmap_to_display.trigger('change');
          timeseries_to_display.trigger('change');
          ffts_to_display.trigger('change');
@@ -370,6 +530,7 @@ top_right = hplot(sp_var, sp_ratio)
 top       = hplot(top_left, top_right)
 middle    = hplot(sp_ts, sp_fft)
 pl        = vplot(comp_table_DTABLE,top, middle, ICAmapFigure)
-#p         = hplot(pl,tabs)
-show(pl)
+h         = vplot(FC_Tabs, ICA_Hists, KR_Hists)
+p         = hplot(pl,h)
+show(p)
 # ==============================================================================

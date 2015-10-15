@@ -65,15 +65,18 @@ if __name__=='__main__':
     parser.add_argument(     "--mask",             dest='mask_file',      help='Path to the mask to use during the analysis. If not provided, one will be computed automatically',type=str, default=None)
     parser.add_argument(     "--reuse",            dest='reuse',          help='Use this option if you want to omit recomputation of any outputs that already exist in the directory', action='store_true')
     parser.add_argument(     "--ncpus",            dest='Ncpus',          help='Number of cpus available. Default will be #available/2', default=None, type=int)
-    parser.add_argument(     "--save_extra",       dest='save_extra',    help='Trigger to write to disk additional files.',action='store_true')
-    options = parser.parse_args()
-    krRatio = float(options.krRatio)
+    parser.add_argument(     "--save_extra",       dest='save_extra',     help='Trigger to write to disk additional files.',action='store_true')
+    parser.add_argument("-z","--ICAZThr",          dest='ica_zthr',       help='Threshold for the Z-score ICA maps', default=0, type=float)
+    options  = parser.parse_args()
+    krRatio  = float(options.krRatio)
+    ica_zthr = float(options.ica_zthr)
     if (options.Ncpus is None) or (options.Ncpus > cpu_count()):
         Ncpu = int(cpu_count()/2)
     else:
         Ncpu = int(options.Ncpus) 
 
     print "++ INFO [Main]: K/R Ratio = %f" % krRatio
+    print "++ INFO [Main]: ICA Z Threshold = %f" % ica_zthr
     print "++ INFO [Main]: Reuse exiting results? %s" % options.reuse
     print "++ INFO [Main]: Number of CPUs to use: %d" % (Ncpu)
     # Control all necessary inputs are available
@@ -380,7 +383,7 @@ if __name__=='__main__':
        voxelwiseQA=QA_SSE_Rank
        print "++ INFO [Main]: QA weigths were used during kappa/rho computation"
     
-    fica_feats = meb.characterize_components(SME_pc, SME_mean, tes, t2s, S0, fica_mmix_zsc, fica_out, voxelwiseQA, Ncpu, ICA_maps_thr=2.5, 
+    fica_feats = meb.characterize_components(SME_pc, SME_mean, tes, t2s, S0, fica_mmix_zsc, fica_out, voxelwiseQA, Ncpu, ICA_maps_thr=ica_zthr, 
                  outDir=options.out_dir,
                  outPrefix=options.prefix, 
                  mask=mask,writeOuts=options.save_extra,
