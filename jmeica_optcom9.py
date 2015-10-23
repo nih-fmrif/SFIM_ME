@@ -84,7 +84,7 @@ if __name__=='__main__':
     if options.tes is None and options.tes_file is None:
         print "++ Error: No information about echo times provided. Please do so via --TEs or --tes_file"
         sys.exit()
-    if not (options.tes is None) and options.tes_file is None:
+    if (not (options.tes is None)) and (not (options.tes_file is None)):
         print "++ Error: Echo times provided in two different ways (--TEs and --tes_file). Please select only one input mode"
         sys.exit()
     if options.data_file is None:

@@ -305,7 +305,6 @@ def _characterize_this_component(item):
            niiwrite_nv(B.T,mask,outDir+outPrefix+'.chComp.EXTRA.Beta'+str(c).zfill(3)+'.nii',aff,head)
     # S0 Model
     coeffs_S0        = (B*X1).sum(axis=0)/(X1**2).sum(axis=0)        #(Nv,)
-    #Rho_mask         = (c_mask + (coeffs_S0 <= 0)) > 0.5
     estima_S0        = X1*np.tile(coeffs_S0,(Ne,1))
     SSR_S0           = (estima_S0**2).sum(axis=0)
     SSE_S0           = ((B-estima_S0)**2).sum(axis=0)  
@@ -337,20 +336,23 @@ def _characterize_this_component(item):
     if writeOuts:
         niiwrite_nv((X2*np.tile(coeffs_R2,(Ne,1))).T,mask,outDir+outPrefix+'.chComp.EXTRA.R2Fit'+str(c).zfill(3)+'.nii',aff,head)
     
-    
     # Kappa Computation
-    #weight_map[weight_map>Z_MAX] = Z_MAX
-    #weight_map[weight_map<-Z_MAX] = -Z_MAX
-    Kappa_map        = F_R2 * weight_map
-    Kappa_mask_arr   = ma.masked_array(Kappa_map,  mask=Kappa_mask)
-    KappW_mask_arr   = ma.masked_array(weight_map, mask=Kappa_mask)
-    Kappa            = Kappa_mask_arr.mean() / KappW_mask_arr.mean()
+    Kappa_map         = F_R2 * weight_map 
+    Kappa_mask_arr   = ma.masked_array(Kappa_map,  mask=Kappa_mask)    # NOTE: This use of the masked array has been manually validated
+    KappW_mask_arr   = ma.masked_array(weight_map, mask=Kappa_mask)    # NOTE: This use of the masked array has been manually validated
+    Kappa            = Kappa_mask_arr.mean() / KappW_mask_arr.mean()   # NOTE: This use of the masked array has been manually validated
+    
+    Kappa_map        = Kappa_map / KappW_mask_arr.mean() # This is so that the output Kappa map is properly computed using only the
+    Kappa_map        = Kappa_map * ~Kappa_mask           # weigths from the voxels entering the computation
     
     #Rho Computation
     Rho_map          = F_S0 * weight_map
-    Rho_mask_arr     = ma.masked_array(Rho_map,    mask=Rho_mask)
-    RhoW_mask_arr    = ma.masked_array(weight_map, mask=Rho_mask)
-    Rho              = Rho_mask_arr.mean() / RhoW_mask_arr.mean()
+    Rho_mask_arr     = ma.masked_array(Rho_map,    mask=Rho_mask)      # NOTE: This use of the masked array has been manually validated
+    RhoW_mask_arr    = ma.masked_array(weight_map, mask=Rho_mask)      # NOTE: This use of the masked array has been manually validated
+    Rho              = Rho_mask_arr.mean() / RhoW_mask_arr.mean()      # NOTE: This use of the masked array has been manually validated
+    
+    Rho_map        = Rho_map / RhoW_mask_arr.mean()      # This is so that the output Rho map is properly computed using only the
+    Rho_map        = Rho_map * ~Rho_mask                 # weigths from the voxels entering the computation
     
     return {'Kappa':Kappa, 'Rho':Rho, 'Kappa_map':Kappa_map, 'Rho_map':Rho_map, 'FS0':F_S0_AllValues, 'FR2':F_R2_AllValues, 'cS0':coeffs_S0, 'cR2':coeffs_R2,'Kappa_mask':Kappa_mask,'Rho_mask':Rho_mask}
     
