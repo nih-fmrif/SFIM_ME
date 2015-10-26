@@ -9,7 +9,12 @@ if not path in sys.path:
     sys.path.insert(1, path)
 del path
 
-
+help_desc = """
+This program performs multi-echo (ME) independent component analysis (ICA) denoising
+of multi-echo fMRI time series. The program takes as input fully pre-processed multi-
+echo fMRI datasets, echo times used duing acquisition, a series of parameters that
+affect the computation of component characteristics and the outputs.
+"""
 
 def dep_check():
     print "++ INFO [Main]: Checking for dependencies...."
@@ -41,35 +46,49 @@ if __name__=='__main__':
     import cPickle           as pickle
     import meBasics          as meb
     import bz2
-    from argparse              import ArgumentParser
+    from argparse              import ArgumentParser,RawTextHelpFormatter
     from sklearn.decomposition import FastICA
     from sklearn.preprocessing import StandardScaler
     from multiprocessing       import cpu_count
     from scipy.stats           import skew, zscore
     # Parse input parameters
     # ----------------------
-    parser = ArgumentParser()
-    parser.add_argument("-d","--orig_data",        dest='data_file',      help="Spatially concatenated Multi-Echo Dataset",type=str,   default=None)
-    parser.add_argument("-e","--TEs",              dest='tes',            help="Echo times (in ms) ex: 15,39,63",          type=str,   default=None)
-    parser.add_argument(     "--TR",               dest='TR',             help="Repetion Time (in secs). ex: 2",           type=float, default=None)
-    parser.add_argument(     "--tes_file",         dest='tes_file',       help="Path to file with Echo time information",  type=str,   default=None)
-    parser.add_argument(     "--out_dir",          dest='out_dir',        help="Output Directory. Default: current directory",type=str,default='.')
+    parser = ArgumentParser(description=help_desc,formatter_class=RawTextHelpFormatter)
+    prsCch = parser.add_argument_group('Component Characterization')
+    prsInp = parser.add_argument_group('Input Options')
+    prsOut = parser.add_argument_group('Output Options')
+    prsInp.add_argument("-d","--orig_data",        dest='data_file',      help="Spatially concatenated Multi-Echo Dataset",type=str,   default=None)
+    prsInp.add_argument("-e","--TEs",              dest='tes',            help="Echo times (in ms) ex: 15,39,63",          type=str,   default=None)
+    prsInp.add_argument(     "--TR",               dest='TR',             help="Repetion Time (in secs). ex: 2",           type=float, default=None)
+    prsInp.add_argument(     "--tes_file",         dest='tes_file',       help="Path to file with Echo time information",  type=str,   default=None)
+    prsOut.add_argument(     "--out_dir",          dest='out_dir',        help="Output Directory. Default: current directory",type=str,default='.')
     parser.add_argument(     "--polort",           dest='polort',         help="Order of legendre polinomial to fit to residuals. Default=5",type=int,default=5)
-    parser.add_argument(     "--prefix",           dest='prefix',         help="Output File Prefix. Default = sbj",type=str,default='sbj')
+    prsOut.add_argument(     "--prefix",           dest='prefix',         help="Output File Prefix. Default = sbj",type=str,default='sbj')
     parser.add_argument("-v","--verbose",          dest='writeExtra',     help="Write extra files. Default = 0. Values = 1 (write all)",action='store_true')
     parser.add_argument(     "--noQA",             dest='doQA',           help='Trigger to switch QA OFF.',action='store_false')
     parser.add_argument(     "--use_preTEfit",     dest='doPreTEdn',      help='Trigger to switch TE-dependence fit prior to PCA/ICA ON.',action='store_true')
-    parser.add_argument(     "--use_QAweight",     dest='doQAw',          help='Trigger to switch QA-weigths in Kappa/Rho computations ON.',action='store_true')
-    parser.add_argument("-r","--krRatio",          dest='krRatio',        help='Selection criteria. Default 1.25',type=float, default=1.25)
-    parser.add_argument(     "--use_var_criteria", dest='useVarCriteria', help='Trigger to switch variance selection criteria ON.',action='store_true')
+    prsCch.add_argument(     "--use_QAweight",     dest='doQAw',          help='Trigger to switch QA-weigths in Kappa/Rho computations ON.',action='store_true')
+    prsCch.add_argument("-r","--krRatio",          dest='krRatio',        help='Selection criteria. Default 1.25',type=float, default=1.25)
+    prsCch.add_argument(     "--use_var_criteria", dest='useVarCriteria', help='Trigger to switch variance selection criteria ON.',action='store_true')
     parser.add_argument(     "--mask",             dest='mask_file',      help='Path to the mask to use during the analysis. If not provided, one will be computed automatically',type=str, default=None)
     parser.add_argument(     "--reuse",            dest='reuse',          help='Use this option if you want to omit recomputation of any outputs that already exist in the directory', action='store_true')
     parser.add_argument(     "--ncpus",            dest='Ncpus',          help='Number of cpus available. Default will be #available/2', default=None, type=int)
-    parser.add_argument(     "--save_extra",       dest='save_extra',     help='Trigger to write to disk additional files.',action='store_true')
-    parser.add_argument("-z","--ICAZThr",          dest='ica_zthr',       help='Threshold for the Z-score ICA maps', default=0, type=float)
+    prsOut.add_argument(     "--save_extra",       dest='save_extra',     help='Trigger to write to disk additional files.',action='store_true')
+    prsCch.add_argument("-z","--ICAZThr",          dest='ica_zthr',       help='Threshold for the Z-score ICA maps', default=0, type=float)
+    prsCch.add_argument(     "--Fmax",             dest='Fmax',           help='Maximum value for F-stats in TE-dependent fit. Default= No Max', default=None, type=float)
+    prsCch.add_argument(     "--Zmax",             dest='Zmax',           help='Maximum value for Z-stats in ICA Maps. Default= No Max', default=None, type=float)
+    
     options  = parser.parse_args()
     krRatio  = float(options.krRatio)
     ica_zthr = float(options.ica_zthr)
+    if options.Fmax==None:
+        Fmax = np.inf
+    else:
+        Fmax     = float(options.Fmax)
+    if options.Zmax==None:
+        Zmax = np.inf
+    else:
+        Zmax     = float(options.Zmax)
     if (options.Ncpus is None) or (options.Ncpus > cpu_count()):
         Ncpu = int(cpu_count()/2)
     else:
@@ -77,6 +96,8 @@ if __name__=='__main__':
 
     print "++ INFO [Main]: K/R Ratio = %f" % krRatio
     print "++ INFO [Main]: ICA Z Threshold = %f" % ica_zthr
+    print "++ INFO [Main]: F-stat Max Value = %f" % Fmax
+    print "++ INFO [Main]: Z-stat Max Value = %f" % Zmax
     print "++ INFO [Main]: Reuse exiting results? %s" % options.reuse
     print "++ INFO [Main]: Number of CPUs to use: %d" % (Ncpu)
     # Control all necessary inputs are available
@@ -383,7 +404,7 @@ if __name__=='__main__':
        voxelwiseQA=QA_SSE_Rank
        print "++ INFO [Main]: QA weigths were used during kappa/rho computation"
     
-    fica_feats = meb.characterize_components(SME_pc, SME_mean, tes, t2s, S0, fica_mmix_zsc, fica_out, voxelwiseQA, Ncpu, ICA_maps_thr=ica_zthr, 
+    fica_feats = meb.characterize_components(SME_pc, SME_mean, tes, t2s, S0, fica_mmix_zsc, fica_out, voxelwiseQA, Ncpu, ICA_maps_thr=ica_zthr, F_MAX=Fmax, Z_MAX=Zmax,
                  outDir=options.out_dir,
                  outPrefix=options.prefix, 
                  mask=mask,writeOuts=options.save_extra,

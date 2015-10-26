@@ -11,6 +11,8 @@ from scipy.special        import legendre
 from sklearn.linear_model import LinearRegression
 from multiprocessing      import cpu_count,Pool
 from scipy.stats          import f
+
+
 def computeFFT(ts,TR):
     """
     This function computes the fft of the ICA representative timeseries and
