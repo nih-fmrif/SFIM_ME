@@ -118,10 +118,10 @@ def components(TED,sort_col):
 	for i in ctab[:,0]:
 		if not((int(i) in accept_) or (int(i) in reject_) or (int(i) in middle_)):
 			ignore_.append(int(i))
-	accept = np.zeros(shape = (len(accept_),10))
-	reject = np.zeros(shape = (len(reject_),10))
-	middle = np.zeros(shape = (len(middle_),10))
-	ignore = np.zeros(shape = (len(ignore_),10))
+	accept = np.zeros(shape = (len(accept_),14))
+	reject = np.zeros(shape = (len(reject_),14))
+	middle = np.zeros(shape = (len(middle_),14))
+	ignore = np.zeros(shape = (len(ignore_),14))
 	a = b = c = d = 0
 	sorted_components = np.argsort(ctab[:,sort_col])[::-1]
 	#for i in ctab[:,0]:
@@ -138,7 +138,7 @@ def components(TED,sort_col):
 		elif i in ignore_:
 			ignore[d,:] = ctab[np.where(ctab[:,0]==i),:]
 			d = d + 1
-	print pd.DataFrame(accept,columns=['compID','Kappa','Rho','varExp','varExpN','maxR2','maxS0','Ratio','maxZICA','#vZmask'])	
+	print pd.DataFrame(accept,columns=['compID','Kappa','Rho','varExp','varExpN','maxR2','maxS0','Ratio','maxZICA','NvZmask','NvFR2mask','NvFS0mask','NvKapMask','NvRhoMask'])	
 	return (accept,reject,middle,ignore)
 
 """

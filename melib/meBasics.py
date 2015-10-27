@@ -452,7 +452,7 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
                 'writeOuts':  writeOuts
                 } for c in np.arange(Nc)]) 
                 #'c_mask':     ((discard_mask + ICA_maps_mask[:,c]) > 0.5),
-    features = np.zeros((Nc,9))
+    features = np.zeros((Nc,13))
                             
     for c in range(Nc):
         Weight_maps[:,c] = (ICA_maps[:,c]**2.)*voxelwiseQA
@@ -486,6 +486,10 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
         features[c,7]    = ZICA_mask_arr.max()
         
         features[c,8]    = Nv - ICA_maps_mask[:,c].sum()
+        features[c,9]    = Nv - F_R2_masks[:,c].sum()
+        features[c,10]   = Nv - F_S0_masks[:,c].sum()
+        features[c,11]   = Nv - Kappa_masks[:,c].sum()
+        features[c,12]   = Nv - Rho_masks[:,c].sum()
         
     niiwrite_nv(beta      , mask,outDir+outPrefix+'.chComp.Beta.nii',aff ,head)
     niiwrite_nv(F_S0_maps , mask,outDir+outPrefix+'.chComp.FS0.nii',aff ,head)
@@ -612,8 +616,9 @@ def writeCompTable(out_dir,data_file, features, varexp, psel, Nt, sort_col):
         f.write("#IGN    \t#Ignored components (kept in denoised time series)\n")
         f.write("#VEx  TCo   DFe   RJn   DFn   \n")
         f.write("##%.02f  %i %i %i %i \n" % (varexp,Nc,Ngood,Nbad,Nt-Nbad))
-        f.write("#  comp  Kappa Rho   %%Var %%VarN	MaxR2	MaxS0	Ratio maxZICA\n")
+        f.write("#  comp  Kappa Rho   %%Var %%VarN	MaxR2	MaxS0	Ratio    maxZICA    NvZmask    NvFR2mask    NvFS0mask NvKapMask    NvRhoMask\n")
         idx = 0
         for i in range(Nc):
-            f.write('%d\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%d\n'%(features[i,0],features[i,1],features[i,2],features[i,3],features[i,3],features[i,4],features[i,5],features[i,6],features[i,7],features[i,8]))
+            f.write('%d\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\t%d\n'%(features[i,0],features[i,1],features[i,2],features[i,3],features[i,3],features[i,4],features[i,5],features[i,6],features[i,7],
+                    features[i,8],features[i,9],features[i,10],features[i,11],features[i,12]))
             idx=idx+1

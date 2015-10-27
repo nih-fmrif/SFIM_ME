@@ -155,6 +155,10 @@ maxFR2 = comp_table[:,5]
 maxFS0 = comp_table[:,6]
 maxZICA= comp_table[:,8]
 NvZmask= comp_table[:,9]
+NvFR2mask = comp_table[:,10]
+NvFS0mask = comp_table[:,11]
+NvKapmask = comp_table[:,12]
+NvRhomask = comp_table[:,13]
 
 kappa_ranked = np.sort(kappa)[::-1]
 rho_ranked   = np.sort(rho)[::-1]
@@ -181,7 +185,11 @@ Source = ColumnDataSource(data=dict(cID = cID,
                                     maxFR2      = maxFR2,
                                     maxFS0      = maxFS0,
                                     maxZICA     = maxZICA,
-                                    NvZmask     = NvZmask))
+                                    NvZmask     = NvZmask,
+                                    NvFR2mask     = NvFR2mask,
+                                    NvFS0mask     = NvFS0mask,
+                                    NvKapmask     = NvKapmask,
+                                    NvRhomask     = NvRhomask))
 
 # ==============================================================================
 #                                 FEATURE TABLE
@@ -196,7 +204,11 @@ comp_table_columns = [
     TableColumn(field="maxFR2",title="maxFR2", formatter=NumberFormatter(format='0.000')),
     TableColumn(field="maxFS0",title="maxFS0", formatter=NumberFormatter(format='0.000')),
     TableColumn(field="maxZICA",title="maxZICA", formatter=NumberFormatter(format='0.000')),
-    TableColumn(field="NvZmask",title="Nv in Zmask")
+    TableColumn(field="NvZmask",title="Nv(Z mask)"),
+    TableColumn(field="NvFR2mask",title="Nv(FR2 mask)"),
+    TableColumn(field="NvFS0mask",title="Nv(FS0 mask)"),
+    TableColumn(field="NvKapmask",title="Nv(Kappa mask)"),
+    TableColumn(field="NvRhomask",title="Nv(Rho mask)")
 ]
 comp_table_DTABLE = DataTable(source=Source,columns=comp_table_columns,width=1350, height=250, editable=True, selectable=True, sortable=False)
 

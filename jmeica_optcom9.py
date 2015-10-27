@@ -413,7 +413,7 @@ if __name__=='__main__':
     ax.plot(np.sort(fica_feats[:,6]))
     f.savefig(options.out_dir+options.prefix+'Ratio.pdf')
     pd.options.display.float_format = '{:,.2f}'.format
-    print pd.DataFrame(fica_feats,columns=['compID','Kappa','Rho','varExp','maxR2','maxS0','Ratio','maxZICA','#vZmask'])
+    print pd.DataFrame(fica_feats,columns=['compID','Kappa','Rho','varExp','maxR2','maxS0','Ratio','maxZICA','NvZmask','NvFR2mask','NvFS0mask','NvKapMask','NvRhoMask'])
        
     # Selection good and bad components
     # ---------------------------------
