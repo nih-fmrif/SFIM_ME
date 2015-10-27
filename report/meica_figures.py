@@ -118,10 +118,10 @@ def components(TED,sort_col):
 	for i in ctab[:,0]:
 		if not((int(i) in accept_) or (int(i) in reject_) or (int(i) in middle_)):
 			ignore_.append(int(i))
-	accept = np.zeros(shape = (len(accept_),8))
-	reject = np.zeros(shape = (len(reject_),8))
-	middle = np.zeros(shape = (len(middle_),8))
-	ignore = np.zeros(shape = (len(ignore_),8))
+	accept = np.zeros(shape = (len(accept_),9))
+	reject = np.zeros(shape = (len(reject_),9))
+	middle = np.zeros(shape = (len(middle_),9))
+	ignore = np.zeros(shape = (len(ignore_),9))
 	a = b = c = d = 0
 	sorted_components = np.argsort(ctab[:,sort_col])[::-1]
 	#for i in ctab[:,0]:
@@ -138,7 +138,7 @@ def components(TED,sort_col):
 		elif i in ignore_:
 			ignore[d,:] = ctab[np.where(ctab[:,0]==i),:]
 			d = d + 1
-	print pd.DataFrame(accept,columns=['compID','Kappa','Rho','varExp','varExpN','maxR2','maxS0','Ratio'])	
+	print pd.DataFrame(accept,columns=['compID','Kappa','Rho','varExp','varExpN','maxR2','maxS0','Ratio','maxZICA'])	
 	return (accept,reject,middle,ignore)
 
 """

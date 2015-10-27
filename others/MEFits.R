@@ -1,0 +1,15 @@
+source('/usr/local/abin/AFNIio.R')
+myBetas<-read.AFNI('/data/SFIMJGC/TALK_fMRIClassME/PrcsData/SBJ02/D03_MEICA/SBJ02_S02Run10.chComp.EXTRA.Beta032+orig')
+names(myBetas)
+#I=32
+#J=55
+#K=8
+I=32
+J=52
+K=9
+Betas<-myBetas$brk[I+1,J+1,K+1,]
+TE<-c(15.4,29.7,44)
+xR2<-TE/mean(TE)
+xS0<-c(1,1,1)
+summary(lm(Betas~0+xR2))
+summary(lm(Betas~0+xS0))

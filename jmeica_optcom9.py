@@ -190,7 +190,7 @@ if __name__=='__main__':
     
     # Compute mean across time
     # ------------------------
-    print "++ INFO [Main]: Compuitng Mean across time for all echoes...."  
+    print "++ INFO [Main]: Computing Mean across time for all echoes...."  
     # There are two options here:
     #   (1) Simply use the mean command.
     Smean_case01 = SME.mean(axis=-1)
@@ -240,7 +240,7 @@ if __name__=='__main__':
        meb.niiwrite_nv(S0                ,mask,stFit_S0_path, mepi_aff ,mepi_head)
        meb.niiwrite_nv(t2s               ,mask,stFit_t2s_path,mepi_aff ,mepi_head)
        meb.niiwrite_nv(SSE               ,mask,stFit_SSE_path,mepi_aff ,mepi_head)
-       meb.niiwrite_nv(mask_bad_staticFit,mask,stFit_bVx_path,mepi_aff ,mepi_head)
+       meb.niiwrite_nv(mask_bad_staticFit,mask,stFit_bVx_path,mepi_aff ,mepi_head) # In mask_bad_staticFit, voxels that should be discarded are = 1 both in Python and in the associated AFNI brik
        # There is a simpler, yet less accurate way to do this. 
        # Do a log-linear fit. The lack of boundaries and the log-linear transformation leads to
        # some voxels having completely wrong values for TE and S0. The benefit of this is that 
@@ -413,7 +413,7 @@ if __name__=='__main__':
     ax.plot(np.sort(fica_feats[:,6]))
     f.savefig(options.out_dir+options.prefix+'Ratio.pdf')
     pd.options.display.float_format = '{:,.2f}'.format
-    print pd.DataFrame(fica_feats,columns=['compID','Kappa','Rho','varExp','maxR2','maxS0','Ratio'])
+    print pd.DataFrame(fica_feats,columns=['compID','Kappa','Rho','varExp','maxR2','maxS0','Ratio','maxZICA'])
        
     # Selection good and bad components
     # ---------------------------------

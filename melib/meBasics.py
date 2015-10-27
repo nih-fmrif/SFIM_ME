@@ -314,7 +314,8 @@ def _characterize_this_component(item):
     dofSSE_S0        = Ne -1
     F_S0             = (SSR_S0/dofSSR_S0) / (SSE_S0/dofSSE_S0)
     p_S0             = 1-f.cdf(F_S0,1,Ne-1)
-    Rho_mask       = (c_mask + (p_S0 > 0.05)) > 0.5
+    F_S0_mask        = (p_S0 > 0.05)
+    Rho_mask       = (c_mask + F_S0_mask) > 0.5
     F_S0[F_S0>F_MAX] = F_MAX
     F_S0_AllValues   = F_S0.copy()
     if writeOuts:
@@ -332,7 +333,8 @@ def _characterize_this_component(item):
     dofSSE_R2        = Ne -1
     F_R2             = (SSR_R2/dofSSR_R2) / (SSE_R2/dofSSE_R2)
     p_R2             = 1-f.cdf(F_R2,1,Ne-1)
-    Kappa_mask       = (c_mask + (p_R2 > 0.05)) > 0.5
+    F_R2_mask        = (p_R2 > 0.05)
+    Kappa_mask       = (c_mask + F_R2_mask) > 0.5
     F_R2[F_R2>F_MAX] = F_MAX
     F_R2_AllValues   = F_R2.copy()
     if writeOuts:
@@ -356,7 +358,8 @@ def _characterize_this_component(item):
     Rho_map        = Rho_map / RhoW_mask_arr.mean()      # This is so that the output Rho map is properly computed using only the
     Rho_map        = Rho_map * ~Rho_mask                 # weigths from the voxels entering the computation
     
-    return {'Kappa':Kappa, 'Rho':Rho, 'Kappa_map':Kappa_map, 'Rho_map':Rho_map, 'FS0':F_S0_AllValues, 'FR2':F_R2_AllValues, 'cS0':coeffs_S0, 'cR2':coeffs_R2,'Kappa_mask':Kappa_mask,'Rho_mask':Rho_mask}
+    return {'Kappa':Kappa, 'Rho':Rho, 'Kappa_map':Kappa_map, 'Rho_map':Rho_map, 'FS0':F_S0_AllValues, 'FR2':F_R2_AllValues, 'cS0':coeffs_S0, 'cR2':coeffs_R2,
+            'Kappa_mask':Kappa_mask,'Rho_mask':Rho_mask, 'F_R2_mask':F_R2_mask, 'F_S0_mask':F_S0_mask, 'pR2':p_R2, 'pS0':p_S0}
     
 def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, voxelwiseQA, 
                             Ncpus, ICA_maps_thr=0.0, discard_mask=None,writeOuts=False,outDir=None, outPrefix=None, mask=None, aff=None, head=None, Z_MAX=8, F_MAX=500):
@@ -402,8 +405,8 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
        discard_mask = np.zeros((Nv,))
     
     # Get ICA-component masks based on threshold
-    ICA_maps_mask = ICA_maps.copy()
-    ICA_maps_mask = (np.abs(ICA_maps)<ICA_maps_thr)  #(Nv,Nc)
+    ICA_maps_mask = np.zeros(ICA_maps.size)
+    ICA_maps_mask = (np.abs(ICA_maps)<ICA_maps_thr)  #(Nv,Nc): Voxels with excessively low Z will be marked with 1
     
     niiwrite_nv(abs(ICA_maps_mask-1), mask,outDir+outPrefix+'.ICA.Zmaps.mask.nii',aff ,head)
     
@@ -420,8 +423,12 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
     # Initialize results holder
     F_S0_maps  = np.zeros((Nv,Nc))
     F_R2_maps  = np.zeros((Nv,Nc))
+    F_S0_masks = np.zeros((Nv,Nc))
+    F_R2_masks = np.zeros((Nv,Nc))
     c_S0_maps  = np.zeros((Nv,Nc))
     c_R2_maps  = np.zeros((Nv,Nc))
+    p_S0_maps  = np.zeros((Nv,Nc))
+    p_R2_maps  = np.zeros((Nv,Nc))
     Kappa_maps = np.zeros((Nv,Nc))
     Kappa_masks= np.zeros((Nv,Nc))
     Rho_maps   = np.zeros((Nv,Nc))
@@ -430,7 +437,6 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
     varexp     = np.zeros(Nc)
     kappas     = np.zeros(Nc)
     rhos       = np.zeros(Nc)
-    
     # Compute metrics per component
     X1 = np.ones((Ne,Nv)) 
     X2 = np.repeat((tes/tes.mean())[:,np.newaxis].T,Nv,axis=0).T   #<--------------------   MAYBE NEEDS A MINUS SIGN   (Ne,Nv)
@@ -446,7 +452,7 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
                 'c_mask':     ((discard_mask + ICA_maps_mask[:,c]) > 0.5),
                 'writeOuts':  writeOuts
                 } for c in np.arange(Nc)]) 
-    features = np.zeros((Nc,7))
+    features = np.zeros((Nc,8))
                             
     for c in range(Nc):
         Weight_maps[:,c] = (ICA_maps[:,c]**2.)*voxelwiseQA
@@ -456,28 +462,44 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
         F_R2_maps[:,c]    = result[c]['FR2']
         c_S0_maps[:,c]    = result[c]['cS0']
         c_R2_maps[:,c]    = result[c]['cR2']
+        p_S0_maps[:,c]    = result[c]['pS0']
+        p_R2_maps[:,c]    = result[c]['pR2']
+        F_S0_masks[:,c]   = result[c]['F_S0_mask']
+        F_R2_masks[:,c]   = result[c]['F_R2_mask']
         Kappa_masks[:,c]  = result[c]['Kappa_mask']
         Rho_masks[:,c]    = result[c]['Rho_mask']      
+        
         features[c,0]    = c
         features[c,1]    = result[c]['Kappa']
         features[c,2]    = result[c]['Rho']
         features[c,3]    = 100*((ICA_maps[:,c]**2).sum()/totalvar)
+        
         FR2_mask_arr     = ma.masked_array(F_R2_maps[:,c], mask=Kappa_masks[:,c])
         features[c,4]    = FR2_mask_arr.max()
+        
         FS0_mask_arr     = ma.masked_array(F_S0_maps[:,c], mask=Rho_masks[:,c])
         features[c,5]    = FS0_mask_arr.max()
+        
         features[c,6]    = features[c,1] / features[c,2]
+        
+        ZICA_mask_arr    = ma.masked_array(ICA_maps[:,c], mask=((discard_mask + ICA_maps_mask[:,c]) > 0.5))
+        features[c,7]    = ZICA_mask_arr.max()
         
     niiwrite_nv(beta      , mask,outDir+outPrefix+'.chComp.Beta.nii',aff ,head)
     niiwrite_nv(F_S0_maps , mask,outDir+outPrefix+'.chComp.FS0.nii',aff ,head)
     niiwrite_nv(F_R2_maps , mask,outDir+outPrefix+'.chComp.FR2.nii',aff ,head)
+    niiwrite_nv(abs(F_S0_masks-1), mask,outDir+outPrefix+'.chComp.FS0.mask.nii',aff ,head)
+    niiwrite_nv(abs(F_R2_masks-1), mask,outDir+outPrefix+'.chComp.FR2.mask.nii',aff ,head)
     niiwrite_nv(c_S0_maps , mask,outDir+outPrefix+'.chComp.cS0.nii',aff ,head)
     niiwrite_nv(c_R2_maps , mask,outDir+outPrefix+'.chComp.cR2.nii',aff ,head)
-    niiwrite_nv(Kappa_maps, mask,outDir+outPrefix+'.chComp.Kappa.nii',aff ,head)
+    niiwrite_nv(p_S0_maps , mask,outDir+outPrefix+'.chComp.pS0.nii',aff ,head)
+    niiwrite_nv(p_R2_maps , mask,outDir+outPrefix+'.chComp.pR2.nii',aff ,head)
+    
+    niiwrite_nv(Kappa_maps,        mask,outDir+outPrefix+'.chComp.Kappa.nii',aff ,head)
     niiwrite_nv(abs(Kappa_masks-1),mask,outDir+outPrefix+'.chComp.Kappa_mask.nii',aff ,head)
-    niiwrite_nv(abs(Rho_masks-1),mask,outDir+outPrefix+'.chComp.Rho_mask.nii',aff ,head)
-    niiwrite_nv(Rho_maps,   mask,outDir+outPrefix+'.chComp.Rho.nii',aff ,head)
-    niiwrite_nv(Weight_maps,mask,outDir+outPrefix+'.chComp.weightMaps.nii',aff ,head)   
+    niiwrite_nv(abs(Rho_masks-1),  mask,outDir+outPrefix+'.chComp.Rho_mask.nii',aff ,head)
+    niiwrite_nv(Rho_maps,          mask,outDir+outPrefix+'.chComp.Rho.nii',aff ,head)
+    niiwrite_nv(Weight_maps,       mask,outDir+outPrefix+'.chComp.weightMaps.nii',aff ,head)   
     return features
     
 
@@ -588,8 +610,8 @@ def writeCompTable(out_dir,data_file, features, varexp, psel, Nt, sort_col):
         f.write("#IGN    \t#Ignored components (kept in denoised time series)\n")
         f.write("#VEx  TCo   DFe   RJn   DFn   \n")
         f.write("##%.02f  %i %i %i %i \n" % (varexp,Nc,Ngood,Nbad,Nt-Nbad))
-        f.write("#  comp  Kappa Rho   %%Var %%VarN	MaxR2	MaxS0	Ratio\n")
+        f.write("#  comp  Kappa Rho   %%Var %%VarN	MaxR2	MaxS0	Ratio maxZICA\n")
         idx = 0
         for i in range(Nc):
-            f.write('%d\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\n'%(features[i,0],features[i,1],features[i,2],features[i,3],features[i,3],features[i,4],features[i,5],features[i,6]))
+            f.write('%d\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\n'%(features[i,0],features[i,1],features[i,2],features[i,3],features[i,3],features[i,4],features[i,5],features[i,6],features[i,7]))
             idx=idx+1
