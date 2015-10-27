@@ -154,6 +154,7 @@ cID    = comp_table[:,0]
 maxFR2 = comp_table[:,5]
 maxFS0 = comp_table[:,6]
 maxZICA= comp_table[:,8]
+NvZmask= comp_table[:,9]
 
 kappa_ranked = np.sort(kappa)[::-1]
 rho_ranked   = np.sort(rho)[::-1]
@@ -179,7 +180,8 @@ Source = ColumnDataSource(data=dict(cID = cID,
                                     comp_status = component_status,
                                     maxFR2      = maxFR2,
                                     maxFS0      = maxFS0,
-                                    maxZICA     = maxZICA))
+                                    maxZICA     = maxZICA,
+                                    NvZmask     = NvZmask))
 
 # ==============================================================================
 #                                 FEATURE TABLE
@@ -193,7 +195,8 @@ comp_table_columns = [
     TableColumn(field="ratio",title="Ka/Rh", formatter=NumberFormatter(format='0.00')),
     TableColumn(field="maxFR2",title="maxFR2", formatter=NumberFormatter(format='0.000')),
     TableColumn(field="maxFS0",title="maxFS0", formatter=NumberFormatter(format='0.000')),
-    TableColumn(field="maxZICA",title="maxZICA", formatter=NumberFormatter(format='0.000'))
+    TableColumn(field="maxZICA",title="maxZICA", formatter=NumberFormatter(format='0.000')),
+    TableColumn(field="NvZmask",title="Nv in Zmask")
 ]
 comp_table_DTABLE = DataTable(source=Source,columns=comp_table_columns,width=1350, height=250, editable=True, selectable=True, sortable=False)
 

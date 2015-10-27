@@ -406,8 +406,7 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
     
     # Get ICA-component masks based on threshold
     ICA_maps_mask = np.zeros(ICA_maps.size)
-    ICA_maps_mask = (np.abs(ICA_maps)<ICA_maps_thr)  #(Nv,Nc): Voxels with excessively low Z will be marked with 1
-    
+    ICA_maps_mask = (((np.abs(ICA_maps)<ICA_maps_thr) + discard_mask[:,np.newaxis] ) > 0.5)
     niiwrite_nv(abs(ICA_maps_mask-1), mask,outDir+outPrefix+'.ICA.Zmaps.mask.nii',aff ,head)
     
     # Compute overall variance in the ICA data
@@ -449,10 +448,11 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
                 'mask':       mask,
                 'B':          np.atleast_3d(beta)[:,:,c].transpose(),
                 'weight_map': (ICA_maps[:,c]**2.)*voxelwiseQA,
-                'c_mask':     ((discard_mask + ICA_maps_mask[:,c]) > 0.5),
+                'c_mask':     ICA_maps_mask[:,c],
                 'writeOuts':  writeOuts
                 } for c in np.arange(Nc)]) 
-    features = np.zeros((Nc,8))
+                #'c_mask':     ((discard_mask + ICA_maps_mask[:,c]) > 0.5),
+    features = np.zeros((Nc,9))
                             
     for c in range(Nc):
         Weight_maps[:,c] = (ICA_maps[:,c]**2.)*voxelwiseQA
@@ -482,8 +482,10 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
         
         features[c,6]    = features[c,1] / features[c,2]
         
-        ZICA_mask_arr    = ma.masked_array(ICA_maps[:,c], mask=((discard_mask + ICA_maps_mask[:,c]) > 0.5))
+        ZICA_mask_arr    = ma.masked_array(ICA_maps[:,c], mask=ICA_maps_mask[:,c])
         features[c,7]    = ZICA_mask_arr.max()
+        
+        features[c,8]    = Nv - ICA_maps_mask[:,c].sum()
         
     niiwrite_nv(beta      , mask,outDir+outPrefix+'.chComp.Beta.nii',aff ,head)
     niiwrite_nv(F_S0_maps , mask,outDir+outPrefix+'.chComp.FS0.nii',aff ,head)
@@ -613,5 +615,5 @@ def writeCompTable(out_dir,data_file, features, varexp, psel, Nt, sort_col):
         f.write("#  comp  Kappa Rho   %%Var %%VarN	MaxR2	MaxS0	Ratio maxZICA\n")
         idx = 0
         for i in range(Nc):
-            f.write('%d\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\n'%(features[i,0],features[i,1],features[i,2],features[i,3],features[i,3],features[i,4],features[i,5],features[i,6],features[i,7]))
+            f.write('%d\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%d\n'%(features[i,0],features[i,1],features[i,2],features[i,3],features[i,3],features[i,4],features[i,5],features[i,6],features[i,7],features[i,8]))
             idx=idx+1
