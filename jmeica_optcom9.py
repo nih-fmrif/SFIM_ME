@@ -225,7 +225,7 @@ if __name__=='__main__':
     stFit_t2s_path = os.path.join(outputDir,options.prefix+'.sTE.t2s.nii')
     stFit_SSE_path = os.path.join(outputDir,options.prefix+'.sTE.SSE.nii')
     stFit_bVx_path = os.path.join(outputDir,options.prefix+'.sTE.mask.bad.nii')
-    mask_bad_staticFit = np.zeros((Nv,))
+    mask_bad_staticFit = np.zeros((Nv,), dtype=bool)
     if options.reuse and os.path.exists(stFit_S0_path) and os.path.exists(stFit_t2s_path) and os.path.exists(stFit_SSE_path) and os.path.exists(stFit_bVx_path):
        print " +              Loading pre-existing static S0 [%s] map." % (stFit_S0_path)
        print " +              Loading pre-existing static t2s [%s] map." % (stFit_t2s_path)
@@ -238,6 +238,7 @@ if __name__=='__main__':
        # Do a non-linear optimization to fit the original curve (no log-linear transformation)
        # using an optimization algorithm that takes boundaries.
        S0, t2s, SSE, mask_bad_staticFit = meb.make_static_maps_opt(SME_mean,tes,Ncpu)
+       mask_bad_staticFit = np.logical_not(mask_bad_staticFit)
        meb.niiwrite_nv(S0                ,mask,stFit_S0_path, mepi_aff ,mepi_head)
        meb.niiwrite_nv(t2s               ,mask,stFit_t2s_path,mepi_aff ,mepi_head)
        meb.niiwrite_nv(SSE               ,mask,stFit_SSE_path,mepi_aff ,mepi_head)
@@ -362,7 +363,7 @@ if __name__=='__main__':
        fica_out -= fica_out.mean(axis=0)
        fica_out /= fica_out.std(axis=0)
        fica_out  = fica_out.T 
-       # POTENTIAL THRESHOLDING components_masked[components_masked < .8] = 0
+       
        fica_mmix  = fica.mixing_.T
        # Correct the sign of components
        # ------------------------------ 

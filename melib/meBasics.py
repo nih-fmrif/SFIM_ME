@@ -314,8 +314,7 @@ def _characterize_this_component(item):
     dofSSE_S0        = Ne -1
     F_S0             = (SSR_S0/dofSSR_S0) / (SSE_S0/dofSSE_S0)
     p_S0             = 1-f.cdf(F_S0,1,Ne-1)
-    F_S0_mask        = (p_S0 > 0.05)
-    Rho_mask       = (c_mask + F_S0_mask) > 0.5
+    F_S0_mask        = (p_S0 < 0.05)
     F_S0[F_S0>F_MAX] = F_MAX
     F_S0_AllValues   = F_S0.copy()
     if writeOuts:
@@ -333,30 +332,39 @@ def _characterize_this_component(item):
     dofSSE_R2        = Ne -1
     F_R2             = (SSR_R2/dofSSR_R2) / (SSE_R2/dofSSE_R2)
     p_R2             = 1-f.cdf(F_R2,1,Ne-1)
-    F_R2_mask        = (p_R2 > 0.05)
-    Kappa_mask       = (c_mask + F_R2_mask) > 0.5
+    F_R2_mask        = (p_R2 < 0.05)
     F_R2[F_R2>F_MAX] = F_MAX
     F_R2_AllValues   = F_R2.copy()
     if writeOuts:
         niiwrite_nv((X2*np.tile(coeffs_R2,(Ne,1))).T,mask,outDir+outPrefix+'.chComp.EXTRA.R2Fit'+str(c).zfill(3)+'.nii',aff,head)
     
+    #Kappa_mask  = np.logical_and(c_mask,F_R2_mask)
+    #Rho_mask    = np.logical_and(c_mask,F_S0_mask)
+    
+    Kappa_mask   = np.logical_and(c_mask, np.logical_or(F_R2_mask, F_S0_mask))
+    Rho_mask     = Kappa_mask.copy()
+    #aux_mask = (F_R2_mask + F_S0_mask) > 1.5
+    #Kappa_mask = (c_mask + aux_mask) > 0.5
+    #Rho_mask = Kappa_mask.copy()
+    
+    
     # Kappa Computation
     Kappa_map         = F_R2 * weight_map 
-    Kappa_mask_arr   = ma.masked_array(Kappa_map,  mask=Kappa_mask)    # NOTE: This use of the masked array has been manually validated
-    KappW_mask_arr   = ma.masked_array(weight_map, mask=Kappa_mask)    # NOTE: This use of the masked array has been manually validated
+    Kappa_mask_arr   = ma.masked_array(Kappa_map,  mask=np.logical_not(Kappa_mask))    # NOTE: This use of the masked array has been manually validated
+    KappW_mask_arr   = ma.masked_array(weight_map, mask=np.logical_not(Kappa_mask))    # NOTE: This use of the masked array has been manually validated
     Kappa            = Kappa_mask_arr.mean() / KappW_mask_arr.mean()   # NOTE: This use of the masked array has been manually validated
     
     Kappa_map        = Kappa_map / KappW_mask_arr.mean() # This is so that the output Kappa map is properly computed using only the
-    Kappa_map        = Kappa_map * ~Kappa_mask           # weigths from the voxels entering the computation
+    Kappa_map        = Kappa_map * Kappa_mask           # weigths from the voxels entering the computation
     
     #Rho Computation
     Rho_map          = F_S0 * weight_map
-    Rho_mask_arr     = ma.masked_array(Rho_map,    mask=Rho_mask)      # NOTE: This use of the masked array has been manually validated
-    RhoW_mask_arr    = ma.masked_array(weight_map, mask=Rho_mask)      # NOTE: This use of the masked array has been manually validated
+    Rho_mask_arr     = ma.masked_array(Rho_map,    mask=np.logical_not(Rho_mask))      # NOTE: This use of the masked array has been manually validated
+    RhoW_mask_arr    = ma.masked_array(weight_map, mask=np.logical_not(Rho_mask))      # NOTE: This use of the masked array has been manually validated
     Rho              = Rho_mask_arr.mean() / RhoW_mask_arr.mean()      # NOTE: This use of the masked array has been manually validated
     
     Rho_map        = Rho_map / RhoW_mask_arr.mean()      # This is so that the output Rho map is properly computed using only the
-    Rho_map        = Rho_map * ~Rho_mask                 # weigths from the voxels entering the computation
+    Rho_map        = Rho_map * Rho_mask                 # weigths from the voxels entering the computation
     
     return {'Kappa':Kappa, 'Rho':Rho, 'Kappa_map':Kappa_map, 'Rho_map':Rho_map, 'FS0':F_S0_AllValues, 'FR2':F_R2_AllValues, 'cS0':coeffs_S0, 'cR2':coeffs_R2,
             'Kappa_mask':Kappa_mask,'Rho_mask':Rho_mask, 'F_R2_mask':F_R2_mask, 'F_S0_mask':F_S0_mask, 'pR2':p_R2, 'pS0':p_S0}
@@ -402,12 +410,12 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
     # If no discard_mask is provided, create one in which no voxels will be discarded during the
     # averaging.
     if discard_mask is None:
-       discard_mask = np.zeros((Nv,))
+       discard_mask = np.zeros((Nv,), dtype=bool)
     
     # Get ICA-component masks based on threshold
-    ICA_maps_mask = np.zeros(ICA_maps.size)
-    ICA_maps_mask = (((np.abs(ICA_maps)<ICA_maps_thr) + discard_mask[:,np.newaxis] ) > 0.5)
-    niiwrite_nv(abs(ICA_maps_mask-1), mask,outDir+outPrefix+'.ICA.Zmaps.mask.nii',aff ,head)
+    ICA_maps_mask = np.zeros(ICA_maps.size, dtype=bool)
+    ICA_maps_mask = np.logical_and((np.abs(ICA_maps)>ICA_maps_thr), discard_mask[:,np.newaxis] )
+    niiwrite_nv(ICA_maps_mask, mask,outDir+outPrefix+'.ICA.Zmaps.mask.nii',aff ,head)
     
     # Compute overall variance in the ICA data
     totalvar     = (ICA_maps**2).sum()               # Single Value
@@ -422,16 +430,16 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
     # Initialize results holder
     F_S0_maps  = np.zeros((Nv,Nc))
     F_R2_maps  = np.zeros((Nv,Nc))
-    F_S0_masks = np.zeros((Nv,Nc))
-    F_R2_masks = np.zeros((Nv,Nc))
+    F_S0_masks = np.zeros((Nv,Nc), dtype=bool)
+    F_R2_masks = np.zeros((Nv,Nc), dtype=bool)
     c_S0_maps  = np.zeros((Nv,Nc))
     c_R2_maps  = np.zeros((Nv,Nc))
     p_S0_maps  = np.zeros((Nv,Nc))
     p_R2_maps  = np.zeros((Nv,Nc))
     Kappa_maps = np.zeros((Nv,Nc))
-    Kappa_masks= np.zeros((Nv,Nc))
+    Kappa_masks= np.zeros((Nv,Nc), dtype=bool)
     Rho_maps   = np.zeros((Nv,Nc))
-    Rho_masks  = np.zeros((Nv,Nc))
+    Rho_masks  = np.zeros((Nv,Nc), dtype=bool)
     Weight_maps= np.zeros((Nv,Nc))
     varexp     = np.zeros(Nc)
     kappas     = np.zeros(Nc)
@@ -451,7 +459,6 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
                 'c_mask':     ICA_maps_mask[:,c],
                 'writeOuts':  writeOuts
                 } for c in np.arange(Nc)]) 
-                #'c_mask':     ((discard_mask + ICA_maps_mask[:,c]) > 0.5),
     features = np.zeros((Nc,13))
                             
     for c in range(Nc):
@@ -474,38 +481,38 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
         features[c,2]    = result[c]['Rho']
         features[c,3]    = 100*((ICA_maps[:,c]**2).sum()/totalvar)
         
-        FR2_mask_arr     = ma.masked_array(F_R2_maps[:,c], mask=Kappa_masks[:,c])
+        FR2_mask_arr     = ma.masked_array(F_R2_maps[:,c], mask=np.logical_not(Kappa_masks[:,c])) #abs(Kappa_masks[:,c]-1))
         features[c,4]    = FR2_mask_arr.max()
         
-        FS0_mask_arr     = ma.masked_array(F_S0_maps[:,c], mask=Rho_masks[:,c])
+        FS0_mask_arr     = ma.masked_array(F_S0_maps[:,c], mask=np.logical_not(Rho_masks[:,c])) #abs(Rho_masks[:,c]-1))
         features[c,5]    = FS0_mask_arr.max()
         
         features[c,6]    = features[c,1] / features[c,2]
         
-        ZICA_mask_arr    = ma.masked_array(ICA_maps[:,c], mask=ICA_maps_mask[:,c])
+        ZICA_mask_arr    = ma.masked_array(ICA_maps[:,c], mask=np.logical_not(ICA_maps_mask[:,c])) #abs(ICA_maps_mask[:,c]-1))
         features[c,7]    = ZICA_mask_arr.max()
         
-        features[c,8]    = Nv - ICA_maps_mask[:,c].sum()
-        features[c,9]    = Nv - F_R2_masks[:,c].sum()
-        features[c,10]   = Nv - F_S0_masks[:,c].sum()
-        features[c,11]   = Nv - Kappa_masks[:,c].sum()
-        features[c,12]   = Nv - Rho_masks[:,c].sum()
+        features[c,8]    = ICA_maps_mask[:,c].sum()
+        features[c,9]    = F_R2_masks[:,c].sum()
+        features[c,10]   = F_S0_masks[:,c].sum()
+        features[c,11]   = Kappa_masks[:,c].sum()
+        features[c,12]   = Rho_masks[:,c].sum()
         
     niiwrite_nv(beta      , mask,outDir+outPrefix+'.chComp.Beta.nii',aff ,head)
     niiwrite_nv(F_S0_maps , mask,outDir+outPrefix+'.chComp.FS0.nii',aff ,head)
     niiwrite_nv(F_R2_maps , mask,outDir+outPrefix+'.chComp.FR2.nii',aff ,head)
-    niiwrite_nv(abs(F_S0_masks-1), mask,outDir+outPrefix+'.chComp.FS0.mask.nii',aff ,head)
-    niiwrite_nv(abs(F_R2_masks-1), mask,outDir+outPrefix+'.chComp.FR2.mask.nii',aff ,head)
+    niiwrite_nv(F_S0_masks, mask,outDir+outPrefix+'.chComp.FS0.mask.nii',aff ,head)
+    niiwrite_nv(F_R2_masks, mask,outDir+outPrefix+'.chComp.FR2.mask.nii',aff ,head)
     niiwrite_nv(c_S0_maps , mask,outDir+outPrefix+'.chComp.cS0.nii',aff ,head)
     niiwrite_nv(c_R2_maps , mask,outDir+outPrefix+'.chComp.cR2.nii',aff ,head)
     niiwrite_nv(p_S0_maps , mask,outDir+outPrefix+'.chComp.pS0.nii',aff ,head)
     niiwrite_nv(p_R2_maps , mask,outDir+outPrefix+'.chComp.pR2.nii',aff ,head)
     
-    niiwrite_nv(Kappa_maps,        mask,outDir+outPrefix+'.chComp.Kappa.nii',aff ,head)
-    niiwrite_nv(abs(Kappa_masks-1),mask,outDir+outPrefix+'.chComp.Kappa_mask.nii',aff ,head)
-    niiwrite_nv(abs(Rho_masks-1),  mask,outDir+outPrefix+'.chComp.Rho_mask.nii',aff ,head)
-    niiwrite_nv(Rho_maps,          mask,outDir+outPrefix+'.chComp.Rho.nii',aff ,head)
-    niiwrite_nv(Weight_maps,       mask,outDir+outPrefix+'.chComp.weightMaps.nii',aff ,head)   
+    niiwrite_nv(Kappa_maps,  mask,outDir+outPrefix+'.chComp.Kappa.nii',aff ,head)
+    niiwrite_nv(Kappa_masks, mask,outDir+outPrefix+'.chComp.Kappa_mask.nii',aff ,head)
+    niiwrite_nv(Rho_masks,   mask,outDir+outPrefix+'.chComp.Rho_mask.nii',aff ,head)
+    niiwrite_nv(Rho_maps,    mask,outDir+outPrefix+'.chComp.Rho.nii',aff ,head)
+    niiwrite_nv(Weight_maps, mask,outDir+outPrefix+'.chComp.weightMaps.nii',aff ,head)   
     return features
     
 

@@ -111,9 +111,9 @@ FS0_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.FS0.nii')
 print "++ INFO [Main]: FS0 Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.FS0.nii',FS0_maps.shape)
 cS0_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.cS0.nii')
 print "++ INFO [Main]: FS0 Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.cS0.nii',cS0_maps.shape)
-KM_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.Kappa_mask.nii')
+KM_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.Kappa_mask.nii'); KM_maps=(KM_maps>0);
 print "++ INFO [Main]: Kappa Masks [%s] loaded successfully." % (options.dir+options.runID+'.chComp.Kappa_mask.nii')
-RM_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.Rho_mask.nii')
+RM_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.Rho_mask.nii'); RM_maps=(RM_maps>0);
 print "++ INFO [Main]: Rho Masks [%s] loaded successfully." % (options.dir+options.runID+'.chComp.Rho_mask.nii')
 Kappa_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.Kappa.nii')
 print "++ INFO [Main]: Kappa Maps [%s] loaded successfully." % (options.dir+options.runID+'.chComp.Kappa.nii')
@@ -121,14 +121,13 @@ Rho_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.Rho.nii')
 print "++ INFO [Main]: Rho Maps [%s] loaded successfully." % (options.dir+options.runID+'.chComp.Rho.nii')
 ICA_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.ICA.Zmaps.nii')
 print "++ INFO [Main]: ICA Maps [%s] loaded successfully." % (options.dir+options.runID+'.ICA.Zmaps.nii')
-ICAM_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.ICA.Zmaps.mask.nii')
+ICAM_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.ICA.Zmaps.mask.nii'); ICAM_maps=(ICAM_maps>0);
 print "++ INFO [Main]: ICA Masks [%s] loaded successfully." % (options.dir+options.runID+'.ICA.Zmaps.mask.nii')
-mask_orig,_,_ = meb.niiLoad(options.dir+options.runID+'.mask.orig.nii')
+mask_orig,_,_ = meb.niiLoad(options.dir+options.runID+'.mask.orig.nii'); mask_orig = (mask_orig>0);
 print "++ INFO [Main]: ICA Masks [%s] loaded successfully." % (options.dir+options.runID+'.mask.orig.nii')
 Wgth_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.weightMaps.nii')
 print "++ INFO [Main]: ICA Masks [%s] loaded successfully." % (options.dir+options.runID+'.chComp.weightMaps.nii')
 
-mask_orig = (mask_orig==1)
 Nt, Nc              = comp_timeseries.shape
 fica_psel           = np.zeros((Nc,))
 fica_psel[accepted_components] = 1
@@ -350,75 +349,73 @@ uWgth_Ledges=np.zeros((Nc,Nbins))
 uWgth_Redges=np.zeros((Nc,Nbins))
 
 for c in range(Nc):
+    histUseDensity = False
     # BOLD Model
     aux_mask_Kappa = np.squeeze(KM_maps[:,:,:,c])
-    aux_mask_Kappa = (aux_mask_Kappa==1)
-    aux_FR2  = np.squeeze(FR2_maps[:,:,:,c])
-    aux_input = aux_FR2[aux_mask_Kappa]
-    FR2_hist[c,:], aux = np.histogram(aux_input,Nbins, density=True)
-    FR2_Ledges[c,:]=aux[:-1]
-    FR2_Redges[c,:]=aux[1:]
+    aux_FR2        = np.squeeze(FR2_maps[:,:,:,c])
+    aux_input      = aux_FR2[aux_mask_Kappa]
+    FR2_hist[c,:], aux = np.histogram(aux_input,Nbins, density=histUseDensity)
+    FR2_Ledges[c,:]    = aux[:-1]
+    FR2_Redges[c,:]    = aux[1:]
     
-    aux_cR2  = np.squeeze(cR2_maps[:,:,:,c])
-    aux_input = aux_cR2[aux_mask_Kappa]
-    cR2_hist[c,:], aux = np.histogram(aux_input,Nbins,density=True)
-    cR2_Ledges[c,:]=aux[:-1]
-    cR2_Redges[c,:]=aux[1:]
+    aux_cR2       = np.squeeze(cR2_maps[:,:,:,c])
+    aux_input     = aux_cR2[aux_mask_Kappa]
+    cR2_hist[c,:], aux = np.histogram(aux_input,Nbins,density=histUseDensity)
+    cR2_Ledges[c,:]    = aux[:-1]
+    cR2_Redges[c,:]    = aux[1:]
     
-    aux_Kappa = np.squeeze(Kappa_maps[:,:,:,c])
-    aux_input = aux_Kappa[aux_mask_Kappa]
-    Kappa_hist[c,:], aux = np.histogram(aux_input, Nbins, density=True);
+    aux_Kappa     = np.squeeze(Kappa_maps[:,:,:,c])
+    aux_input     = aux_Kappa[aux_mask_Kappa]
+    Kappa_hist[c,:], aux = np.histogram(aux_input, Nbins,density=histUseDensity);
     Kappa_Ledges[c,:] = aux[:-1]
     Kappa_Redges[c,:] = aux[1:]
     
     # Non-BOLD Model
     aux_mask_Rho = np.squeeze(RM_maps[:,:,:,c])
-    aux_mask_Rho = (aux_mask_Rho==1)
-    aux_FS0  = np.squeeze(FS0_maps[:,:,:,c])
-    aux_input = aux_FS0[aux_mask_Rho]
-    FS0_hist[c,:], aux = np.histogram(aux_input,Nbins,density=True)
-    FS0_Ledges[c,:]=aux[:-1]
-    FS0_Redges[c,:]=aux[1:]
+    aux_FS0      = np.squeeze(FS0_maps[:,:,:,c])
+    aux_input    = aux_FS0[aux_mask_Rho]
+    FS0_hist[c,:], aux = np.histogram(aux_input,Nbins,density=histUseDensity)
+    FS0_Ledges[c,:]    = aux[:-1]
+    FS0_Redges[c,:]    = aux[1:]
     
-    aux_cS0  = np.squeeze(cS0_maps[:,:,:,c])
+    aux_cS0   = np.squeeze(cS0_maps[:,:,:,c])
     aux_input = aux_cS0[aux_mask_Rho]
-    cS0_hist[c,:], aux = np.histogram(aux_input,Nbins,density=True)
-    cS0_Ledges[c,:]=aux[:-1]
-    cS0_Redges[c,:]=aux[1:]
+    cS0_hist[c,:], aux = np.histogram(aux_input,Nbins,density=histUseDensity)
+    cS0_Ledges[c,:]    = aux[:-1]
+    cS0_Redges[c,:]    = aux[1:]
     
     aux_Rho   = np.squeeze(Rho_maps[:,:,:,c])
     aux_input = aux_Rho[aux_mask_Rho]
-    Rho_hist[c,:], aux = np.histogram(aux_input, Nbins, density=True)
-    Rho_Ledges[c,:] = aux[:-1]
-    Rho_Redges[c,:] = aux[1:]
+    Rho_hist[c,:], aux = np.histogram(aux_input, Nbins, density=histUseDensity)
+    Rho_Ledges[c,:]    = aux[:-1]
+    Rho_Redges[c,:]    = aux[1:]
     
     #ICA Maps
     aux_mask_ICA = np.squeeze(ICAM_maps[:,:,:,c])
-    aux_mask_ICA = (aux_mask_ICA==1)
-    aux_ICA   = np.squeeze(ICA_maps[:,:,:,c])
-    aux_input = aux_ICA[aux_mask_ICA] ##### <--------------- Need to think of appropriate masking here
+    aux_ICA      = np.squeeze(ICA_maps[:,:,:,c])
+    aux_input    = aux_ICA[aux_mask_ICA] ##### <--------------- Need to think of appropriate masking here
     ICA_hist[c,:], aux = np.histogram(aux_input, Nbins)
-    ICA_Ledges[c,:] = aux[:-1]
-    ICA_Redges[c,:] = aux[1:]
+    ICA_Ledges[c,:]    = aux[:-1]
+    ICA_Redges[c,:]    = aux[1:]
     
     aux_ICA   = np.squeeze(ICA_maps[:,:,:,c])
     aux_input = aux_ICA[mask_orig]
     uICA_hist[c,:], aux = np.histogram(aux_input, Nbins)
-    uICA_Ledges[c,:] = aux[:-1]
-    uICA_Redges[c,:] = aux[1:]
+    uICA_Ledges[c,:]    = aux[:-1]
+    uICA_Redges[c,:]    = aux[1:]
     
     #Weight Maps
     aux_Wgth   = np.squeeze(Wgth_maps[:,:,:,c])
-    aux_input = aux_Wgth[aux_mask_ICA] ##### <--------------- Need to think of appropriate masking here
+    aux_input  = aux_Wgth[aux_mask_ICA] ##### <--------------- Need to think of appropriate masking here
     Wgth_hist[c,:], aux = np.histogram(aux_input, Nbins)
-    Wgth_Ledges[c,:] = aux[:-1]
-    Wgth_Redges[c,:] = aux[1:]
+    Wgth_Ledges[c,:]    = aux[:-1]
+    Wgth_Redges[c,:]    = aux[1:]
     
     aux_Wgth   = np.squeeze(Wgth_maps[:,:,:,c])
-    aux_input = aux_Wgth[mask_orig]
+    aux_input  = aux_Wgth[mask_orig]
     uWgth_hist[c,:], aux = np.histogram(aux_input, Nbins)
-    uWgth_Ledges[c,:] = aux[:-1]
-    uWgth_Redges[c,:] = aux[1:]
+    uWgth_Ledges[c,:]    = aux[:-1]
+    uWgth_Redges[c,:]    = aux[1:]
     
     
     
@@ -438,21 +435,21 @@ Hist_avl_cs  = ColumnDataSource(data=dict(FR2_hist=FR2_hist,     FR2_Redges=FR2_
                                           cR2_hist=cR2_hist,     cR2_Redges=cR2_Redges,     cR2_Ledges=cR2_Ledges,
                                           cS0_hist=cS0_hist,     cS0_Redges=cS0_Redges,     cS0_Ledges=cS0_Ledges,
                                           Kappa_hist=Kappa_hist, Kappa_Redges=Kappa_Redges, Kappa_Ledges=Kappa_Ledges,
-                                          Rho_hist=cS0_hist,     Rho_Redges=Rho_Redges,     Rho_Ledges=Rho_Ledges,
+                                          Rho_hist=Rho_hist,     Rho_Redges=Rho_Redges,     Rho_Ledges=Rho_Ledges,
                                           ICA_hist=ICA_hist,     ICA_Redges=ICA_Redges,     ICA_Ledges=ICA_Ledges,
                                           uICA_hist=uICA_hist,    uICA_Redges=uICA_Redges,    uICA_Ledges=uICA_Ledges,
                                           Wgth_hist=Wgth_hist,     Wgth_Redges=Wgth_Redges,     Wgth_Ledges=Wgth_Ledges,
                                           uWgth_hist=uWgth_hist,    uWgth_Redges=uWgth_Redges,    uWgth_Ledges=uWgth_Ledges
                                           ))
 
-F_Hists = figure(width=500, height=300, title='F-stat Histograms',title_text_font_size='12pt',x_axis_label='FS0 or FR2',y_axis_label='Density')
+F_Hists = figure(width=500, height=300, title='F-stat Histograms',title_text_font_size='12pt',x_axis_label='FS0 or FR2',y_axis_label='# Voxels')
 F_Hists.xaxis.axis_label_text_font_size = "12pt"
 F_Hists.yaxis.axis_label_text_font_size = "12pt"
 F_Hists.quad(top='FR2_hist',bottom=0,left='FR2_Ledges',right='FR2_Redges', source=Hist_dis_cs, line_color='green', fill_color='green', alpha=0.5, legend='F R2')
 F_Hists.quad(top='FS0_hist',bottom=0,left='FS0_Ledges',right='FS0_Redges', source=Hist_dis_cs, line_color='red', fill_color='red', alpha=0.5, legend='F S0')
 #F_Hists.line('FR2_Ledges','FR2_hist',source=Hist_dis_cs, line_width=3, color='green')
 #F_Hists.line('FS0_Ledges','FS0_hist',source=Hist_dis_cs, line_width=3, color='red')
-C_Hists = figure(width=500, height=300, title='TE-Fits Histograms',title_text_font_size='12pt',x_axis_label='cS0 or cR2',y_axis_label='Density')
+C_Hists = figure(width=500, height=300, title='TE-Fits Histograms',title_text_font_size='12pt',x_axis_label='cS0 or cR2',y_axis_label='# Voxels')
 C_Hists.xaxis.axis_label_text_font_size = "12pt"
 C_Hists.yaxis.axis_label_text_font_size = "12pt"
 C_Hists.quad(top='cR2_hist',bottom=0,left='cR2_Ledges',right='cR2_Redges', source=Hist_dis_cs, line_color='green', fill_color='green', alpha=0.5, legend='c R2')
@@ -461,7 +458,7 @@ FC_Tab01_C = Panel(child=C_Hists, title='Fit Coefficients')
 FC_Tab02_F = Panel(child=F_Hists, title='F-stat')
 FC_Tabs    = Tabs(tabs=[FC_Tab01_C, FC_Tab02_F])
 
-KR_Hists = figure(width=500, height=300, title='Kappa/Rho Histograms',title_text_font_size='12pt',x_axis_label='Kappa or Rho',y_axis_label='Density')
+KR_Hists = figure(width=500, height=300, title='Kappa/Rho Histograms',title_text_font_size='12pt',x_axis_label='Kappa or Rho',y_axis_label='# Voxels')
 KR_Hists.xaxis.axis_label_text_font_size = "12pt"
 KR_Hists.yaxis.axis_label_text_font_size = "12pt"
 KR_Hists.quad(top='Kappa_hist',bottom=0, left='Kappa_Ledges',right='Kappa_Redges', source=Hist_dis_cs, line_color='green', fill_color='green', alpha=0.5, legend='Kappa')
