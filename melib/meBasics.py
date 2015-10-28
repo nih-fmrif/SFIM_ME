@@ -584,7 +584,7 @@ def computeQA(data,tes,Ncpu,data_mean=None):
     rankSSE         = 100.*rankdata(1./SSE)/Nv
     return SSE,rankSSE
 
-def writeCompTable(out_dir,data_file, features, varexp, psel, Nt, sort_col):
+def writeCompTable(origCommandLine, out_dir,data_file, features, varexp, psel, Nt, sort_col):
     Nc,_ = features.shape
     ts = time.time()
     st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
@@ -602,6 +602,8 @@ def writeCompTable(out_dir,data_file, features, varexp, psel, Nt, sort_col):
     np.savetxt(out_dir+'accepted.txt',acc,fmt='%d',delimiter=',')
     open(out_dir+'midk_rejected.txt','w').write(','.join([str(int(cc)) for cc in midk]))
     with open(out_dir+'comp_table.txt','w') as f:
+        f.write("#Original Command line:\n")
+        f.write("# %s \n" % (origCommandLine))
         f.write("#\n#ME-ICA Component statistics table for: %s \n" % (data_file))
         f.write("#Run on %s \n" % (st)) 
         f.write("#\n")
