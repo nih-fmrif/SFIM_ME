@@ -78,7 +78,7 @@ if __name__=='__main__':
     prsCch.add_argument("-z","--ICAZThr",          dest='ica_zthr',       help='Threshold for the Z-score ICA maps', default=0, type=float)
     prsCch.add_argument(     "--Fmax",             dest='Fmax',           help='Maximum value for F-stats in TE-dependent fit. Default= No Max', default=None, type=float)
     prsCch.add_argument(     "--Zmax",             dest='Zmax',           help='Maximum value for Z-stats in ICA Maps. Default= No Max', default=None, type=float)
-    
+    prsCch.add_argument(     "--do_FullModel",     dest='doFM',           help='Trigger to request Full Model Computation ON.',action='store_true')
     options  = parser.parse_args()
     krRatio  = float(options.krRatio)
     ica_zthr = float(options.ica_zthr)
@@ -410,32 +410,30 @@ if __name__=='__main__':
                  outDir=options.out_dir,
                  outPrefix=options.prefix, 
                  mask=mask,writeOuts=options.save_extra,
-                 aff=mepi_aff, head=mepi_head, discard_mask=mask_bad_staticFit)
-    f,ax = plt.subplots(1,1)
-    ax.plot(np.sort(fica_feats[:,6]))
-    f.savefig(options.out_dir+options.prefix+'Ratio.pdf')
+                 aff=mepi_aff, head=mepi_head, discard_mask=mask_bad_staticFit,
+                 doFM=options.doFM)
     pd.options.display.float_format = '{:,.2f}'.format
-    print pd.DataFrame(fica_feats,columns=['compID','Kappa','Rho','varExp','maxR2','maxS0','Ratio','maxZICA','NvZmask','NvFR2mask','NvFS0mask','NvKapMask','NvRhoMask'])
-       
+    print fica_feats
     # Selection good and bad components
     # ---------------------------------
     print "++ INFO [Main]: Component Selection..."
-    fica_psel  = np.zeros((Nc,))
+    
 
     # (1) Selection based on kappa/rho ratio
-    fica_ratio                    = fica_feats[:,1]/fica_feats[:,2]
-    fica_psel[fica_ratio>krRatio] = 1
-    print " +              Unsorted List of accepted components=%s" % (str(np.where(fica_psel==1)[0]))
+    fica_psel      = (fica_feats['K/R']>krRatio).get_values()
+    accepted       = fica_feats['cID'][fica_psel].get_values().astype(int)
+    print " +              Unsorted List of accepted components=%s" % str(accepted)
     
     # (2) Additional selection based on variance
     if (options.useVarCriteria ==1):
-       fica_pselV  = np.ones((Nc,))
-       comp_idx_byVar      = (fica_feats[np.argsort(fica_feats[:,3]),0][::-1]).astype('int')
-       var_elbow  = meb.getelbow(fica_feats[comp_idx_byVar,3])
-       rm_highvar = comp_idx_byVar[:meb.getelbow(fica_feats[comp_idx_byVar,3])]
-       print " +              Removed due to excessive variance: %s" %(str(np.sort(rm_highvar)))
-       fica_psel[rm_highvar] = 0
-       print " +              Unsorted List of accepted components after var criteria=%s" % (str(np.where(fica_psel==1)[0]))
+       #fica_pselV  = np.ones((Nc,))
+       #comp_idx_byVar      = (fica_feats[np.argsort(fica_feats[:,3]),0][::-1]).astype('int')
+       #var_elbow  = meb.getelbow(fica_feats[comp_idx_byVar,3])
+       #rm_highvar = comp_idx_byVar[:meb.getelbow(fica_feats[comp_idx_byVar,3])]
+       #print " +              Removed due to excessive variance: %s" %(str(np.sort(rm_highvar)))
+       #fica_psel[rm_highvar] = 0
+       #print " +              Unsorted List of accepted components after var criteria=%s" % (str(np.where(fica_psel==1)[0]))
+        print " ++++++++++++++++++ NOT AVAILABLE SINCE SWITCH TO FEATURES AS PANDA  ++++++++++++++++++++++ "
     else:
        print " +              Variance criteria not active [OFF]."
     

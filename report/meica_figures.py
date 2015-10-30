@@ -138,7 +138,7 @@ def components(TED,sort_col):
 		elif i in ignore_:
 			ignore[d,:] = ctab[np.where(ctab[:,0]==i),:]
 			d = d + 1
-	print pd.DataFrame(accept,columns=['compID','Kappa','Rho','varExp','varExpN','maxR2','maxS0','Ratio','maxZICA','NvZmask','NvFR2mask','NvFS0mask','NvKapMask','NvRhoMask'])	
+	#print pd.DataFrame(accept,columns=['compID','Kappa','Rho','varExp','maxR2','maxS0','Ratio','maxZICA','NvZmask','NvFR2mask','NvFS0mask','NvKapMask','NvRhoMask','Dan'])	
 	return (accept,reject,middle,ignore)
 
 """
@@ -847,10 +847,10 @@ def kappa_vs_rho_plot(accept,reject,middle,ignore,ctab,startdir,label,figures):
 		from matplotlib.patches import Rectangle
 		fig = plt.figure()
 		plt.title('ME-ICA Analysis kappa vs rho', fontsize = 14)
-		ACC = plt.scatter(accept[:,1], accept[:,2], c = 'g', marker = 'o', s = 150 * accept[:,4]) 
-		REJ = plt.scatter(reject[:,1], reject[:,2], c = 'r', marker = '^', s = 150 * reject[:,4])
-		MID = plt.scatter(middle[:,1], middle[:,2], c = 'b', marker = 'v', s = 150 * middle[:,4])
-		IGN = plt.scatter(ignore[:,1], ignore[:,2], c = 'c', marker = '*', s = 150 * ignore[:,4])
+		ACC = plt.scatter(accept[:,1], accept[:,2], c = 'g', marker = 'o', s = 150 * accept[:,3]) 
+		REJ = plt.scatter(reject[:,1], reject[:,2], c = 'r', marker = '^', s = 150 * reject[:,3])
+		MID = plt.scatter(middle[:,1], middle[:,2], c = 'b', marker = 'v', s = 150 * middle[:,3])
+		IGN = plt.scatter(ignore[:,1], ignore[:,2], c = 'c', marker = '*', s = 150 * ignore[:,3])
 		plt.gca().xaxis.set_major_locator(MaxNLocator(nbins = 5))
 		plt.tick_params(axis = 'x', which = 'both', top = 'off')
 		plt.tick_params(axis = 'y', which = 'both', right = 'off')
@@ -888,10 +888,10 @@ def kappa_vs_rho_plot(accept,reject,middle,ignore,ctab,startdir,label,figures):
 	plt.close(2)
 	fig = plt.figure()
 	plt.title('ME-ICA Analysis, ' + r'$\kappa$' + ' vs ' + r'$\rho$', fontsize = 14)
-	ACC = plt.scatter(accept[:,1], accept[:,2], c = 'b', marker = 'o', s = 50 * accept[:,4]) 
-	REJ = plt.scatter(reject[:,1], reject[:,2], c = 'r', marker = 'v', s = 50 * reject[:,4])
-	MID = plt.scatter(middle[:,1], middle[:,2], c = 'g', marker = '^', s = 50 * middle[:,4])
-	IGN = plt.scatter(ignore[:,1], ignore[:,2], c = 'c', marker = '*', s = 50 * ignore[:,4])
+	ACC = plt.scatter(accept[:,1], accept[:,2], c = 'b', marker = 'o', s = 50 * accept[:,3]) 
+	REJ = plt.scatter(reject[:,1], reject[:,2], c = 'r', marker = 'v', s = 50 * reject[:,3])
+	MID = plt.scatter(middle[:,1], middle[:,2], c = 'g', marker = '^', s = 50 * middle[:,3])
+	IGN = plt.scatter(ignore[:,1], ignore[:,2], c = 'c', marker = '*', s = 50 * ignore[:,3])
 	plt.legend((trial_1, trial_2, trial_3, trial_4),('Accepted','Rejected','Middle',
 		'Ignore'), scatterpoints = 1, loc = 'upper right', markerscale = 2)
 	plt.gca().xaxis.set_major_locator(MaxNLocator(nbins = 5))

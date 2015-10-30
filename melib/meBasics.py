@@ -3,6 +3,7 @@ import numpy.ma as ma
 import numpy   as np
 import nibabel as nib
 import scipy.optimize as opt
+import pandas         as pd
 from scipy.stats import scoreatpercentile,zscore,skew,rankdata
 import matplotlib.pyplot as plt
 import time
@@ -10,7 +11,7 @@ import datetime
 from scipy.special        import legendre
 from sklearn.linear_model import LinearRegression
 from multiprocessing      import cpu_count,Pool
-from scipy.stats          import f
+from scipy.stats          import f,t, linregress
 
 
 def computeFFT(ts,TR):
@@ -299,6 +300,7 @@ def _characterize_this_component(item):
     weight_map = item['weight_map']
     c_mask     = item['c_mask']
     writeOuts  = item['writeOuts']
+    doFM       = item['doFM']
     Ne, Nv     = B.shape
     Kappa_mask = c_mask.copy()
     Rho_mask   = c_mask.copy()
@@ -343,10 +345,6 @@ def _characterize_this_component(item):
     
     Kappa_mask   = np.logical_and(c_mask, np.logical_or(F_R2_mask, F_S0_mask))
     Rho_mask     = Kappa_mask.copy()
-    #aux_mask = (F_R2_mask + F_S0_mask) > 1.5
-    #Kappa_mask = (c_mask + aux_mask) > 0.5
-    #Rho_mask = Kappa_mask.copy()
-    
     
     # Kappa Computation
     Kappa_map         = F_R2 * weight_map 
@@ -366,11 +364,30 @@ def _characterize_this_component(item):
     Rho_map        = Rho_map / RhoW_mask_arr.mean()      # This is so that the output Rho map is properly computed using only the
     Rho_map        = Rho_map * Rho_mask                 # weigths from the voxels entering the computation
     
-    return {'Kappa':Kappa, 'Rho':Rho, 'Kappa_map':Kappa_map, 'Rho_map':Rho_map, 'FS0':F_S0_AllValues, 'FR2':F_R2_AllValues, 'cS0':coeffs_S0, 'cR2':coeffs_R2,
-            'Kappa_mask':Kappa_mask,'Rho_mask':Rho_mask, 'F_R2_mask':F_R2_mask, 'F_S0_mask':F_S0_mask, 'pR2':p_R2, 'pS0':p_S0}
     
+    # EXTRA CODE
+    if doFM==True:
+        FullModel_Slope = np.zeros((Nv,))
+        FullModel_Inter = np.zeros((Nv,))
+    	FullModel_p     = np.zeros((Nv,))
+        FullModel_r     = np.zeros((Nv,))
+        FullModel_Slope_err = np.zeros((Nv,))
+        FullModel_Slope_T   = np.zeros((Nv,))
+        FullModel_Slope_p   = np.zeros((Nv,))
+        for v in range(Nv):
+            FullModel_Slope[v], FullModel_Inter[v], FullModel_r[v], FullModel_p[v], FullModel_Slope_err[v] = linregress(X2[:,v],B[:,v])
+            FullModel_Slope_T[v] = FullModel_Slope[v]/FullModel_Slope_err[v]
+            FullModel_Slope_p[v] = 2*(1-t.cdf(np.abs(FullModel_Slope_T[v]),Ne-2))
+        return {'Kappa':Kappa, 'Rho':Rho, 'Kappa_map':Kappa_map, 'Rho_map':Rho_map, 'FS0':F_S0_AllValues, 'FR2':F_R2_AllValues, 'cS0':coeffs_S0, 'cR2':coeffs_R2,
+            'Kappa_mask':Kappa_mask,'Rho_mask':Rho_mask, 'F_R2_mask':F_R2_mask, 'F_S0_mask':F_S0_mask, 'pR2':p_R2, 'pS0':p_S0,
+            'FM_Slope':FullModel_Slope, 'FM_Inter':FullModel_Inter, 'FM_p':FullModel_p, 'FM_r':FullModel_r, 
+            'FM_Slope_err':FullModel_Slope_err, 'FM_Slope_T':FullModel_Slope_T, 'FM_Slope_p':FullModel_Slope_p}
+    else:
+        return {'Kappa':Kappa, 'Rho':Rho, 'Kappa_map':Kappa_map, 'Rho_map':Rho_map, 'FS0':F_S0_AllValues, 'FR2':F_R2_AllValues, 'cS0':coeffs_S0, 'cR2':coeffs_R2,
+            'Kappa_mask':Kappa_mask,'Rho_mask':Rho_mask, 'F_R2_mask':F_R2_mask, 'F_S0_mask':F_S0_mask, 'pR2':p_R2, 'pS0':p_S0}
+            
 def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, voxelwiseQA, 
-                            Ncpus, ICA_maps_thr=0.0, discard_mask=None,writeOuts=False,outDir=None, outPrefix=None, mask=None, aff=None, head=None, Z_MAX=8, F_MAX=500):
+                            Ncpus, ICA_maps_thr=0.0, discard_mask=None,writeOuts=False,outDir=None, outPrefix=None, mask=None, aff=None, head=None, Z_MAX=8, F_MAX=500, doFM=False):
     """
     This function computes kappa, rho and variance for each ICA component.
     
@@ -444,6 +461,14 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
     varexp     = np.zeros(Nc)
     kappas     = np.zeros(Nc)
     rhos       = np.zeros(Nc)
+    if doFM:
+        FM_Slope_map = np.zeros((Nv,Nc))
+        FM_Inter_map = np.zeros((Nv,Nc))
+        FM_p_map     = np.zeros((Nv,Nc))
+        FM_r_map     = np.zeros((Nv,Nc))
+        FM_Slope_err_map = np.zeros((Nv,Nc))
+        FM_Slope_T_map   = np.zeros((Nv,Nc))
+        FM_Slope_p_map   = np.zeros((Nv,Nc))
     # Compute metrics per component
     X1 = np.ones((Ne,Nv)) 
     X2 = np.repeat((tes/tes.mean())[:,np.newaxis].T,Nv,axis=0).T   #<--------------------   MAYBE NEEDS A MINUS SIGN   (Ne,Nv)
@@ -457,10 +482,12 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
                 'B':          np.atleast_3d(beta)[:,:,c].transpose(),
                 'weight_map': (ICA_maps[:,c]**2.)*voxelwiseQA,
                 'c_mask':     ICA_maps_mask[:,c],
-                'writeOuts':  writeOuts
+                'writeOuts':  writeOuts,
+                'doFM': doFM
                 } for c in np.arange(Nc)]) 
-    features = np.zeros((Nc,13))
-                            
+    feat_names = ['cID','Kappa','Rho','Var','maxFR2','maxFS0','K/R', 'maxZICA','NvZmask','NvFR2mask','NvFS0mask','NvKapMask','NvRhoMask','Dan']
+    feat_vals  = np.zeros((Nc,len(feat_names)))
+                                
     for c in range(Nc):
         Weight_maps[:,c] = (ICA_maps[:,c]**2.)*voxelwiseQA
         Kappa_maps[:,c]  = result[c]['Kappa_map']
@@ -474,30 +501,50 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
         F_S0_masks[:,c]   = result[c]['F_S0_mask']
         F_R2_masks[:,c]   = result[c]['F_R2_mask']
         Kappa_masks[:,c]  = result[c]['Kappa_mask']
-        Rho_masks[:,c]    = result[c]['Rho_mask']      
+        Rho_masks[:,c]    = result[c]['Rho_mask']
+        if doFM:
+            FM_Slope_map[:,c] = result[c]['FM_Slope']
+            FM_Inter_map[:,c] = result[c]['FM_Inter']
+            FM_p_map[:,c]     = result[c]['FM_p']
+            FM_r_map[:,c]     = result[c]['FM_r']
+            FM_Slope_err_map[:,c] = result[c]['FM_Slope_err']
+            FM_Slope_T_map[:,c]   = result[c]['FM_Slope_T']
+            FM_Slope_p_map[:,c]   = result[c]['FM_Slope_p']
+        feat_vals[c,0]    = c
+        feat_vals[c,1]    = result[c]['Kappa']
+        feat_vals[c,2]    = result[c]['Rho']
+        feat_vals[c,3]    = 100*((ICA_maps[:,c]**2).sum()/totalvar)
         
-        features[c,0]    = c
-        features[c,1]    = result[c]['Kappa']
-        features[c,2]    = result[c]['Rho']
-        features[c,3]    = 100*((ICA_maps[:,c]**2).sum()/totalvar)
         
         FR2_mask_arr     = ma.masked_array(F_R2_maps[:,c], mask=np.logical_not(Kappa_masks[:,c])) #abs(Kappa_masks[:,c]-1))
-        features[c,4]    = FR2_mask_arr.max()
+        feat_vals[c,4]    = FR2_mask_arr.max()
         
         FS0_mask_arr     = ma.masked_array(F_S0_maps[:,c], mask=np.logical_not(Rho_masks[:,c])) #abs(Rho_masks[:,c]-1))
-        features[c,5]    = FS0_mask_arr.max()
+        feat_vals[c,5]    = FS0_mask_arr.max()
         
-        features[c,6]    = features[c,1] / features[c,2]
+        feat_vals[c,6]    = feat_vals[c,1] / feat_vals[c,2]
         
         ZICA_mask_arr    = ma.masked_array(ICA_maps[:,c], mask=np.logical_not(ICA_maps_mask[:,c])) #abs(ICA_maps_mask[:,c]-1))
-        features[c,7]    = ZICA_mask_arr.max()
+        feat_vals[c,7]    = ZICA_mask_arr.max()
         
-        features[c,8]    = ICA_maps_mask[:,c].sum()
-        features[c,9]    = F_R2_masks[:,c].sum()
-        features[c,10]   = F_S0_masks[:,c].sum()
-        features[c,11]   = Kappa_masks[:,c].sum()
-        features[c,12]   = Rho_masks[:,c].sum()
+        feat_vals[c,8]    = ICA_maps_mask[:,c].sum()
+        feat_vals[c,9]    = F_R2_masks[:,c].sum()
+        feat_vals[c,10]   = F_S0_masks[:,c].sum()
+        feat_vals[c,11]   = Kappa_masks[:,c].sum()
+        feat_vals[c,12]   = Rho_masks[:,c].sum()
         
+        # DAN METRIC
+        if doFM:
+            aux_mask      = np.logical_and((FM_p_map[:,c]<0.05),(FM_Slope_p_map[:,c]<0.05))
+            aux_numerator = Weight_maps[aux_mask,c].sum()
+            aux_denominat = Weight_maps[:,c].sum()
+            aux_metric = aux_numerator/aux_denominat
+            print "[%d] -> aux_mask%s | aux_numerator%s | DF=%f" % (c,str(aux_mask.shape),str(Weight_maps[aux_mask,c].shape),aux_metric)
+    
+    df_feats = pd.DataFrame(data=feat_vals,columns=feat_names)
+    df_feats.to_csv(outDir+outPrefix+'.DF.csv')
+    df_feats['cID'] = df_feats['cID'].astype(int)
+
     niiwrite_nv(beta      , mask,outDir+outPrefix+'.chComp.Beta.nii',aff ,head)
     niiwrite_nv(F_S0_maps , mask,outDir+outPrefix+'.chComp.FS0.nii',aff ,head)
     niiwrite_nv(F_R2_maps , mask,outDir+outPrefix+'.chComp.FR2.nii',aff ,head)
@@ -513,7 +560,15 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
     niiwrite_nv(Rho_masks,   mask,outDir+outPrefix+'.chComp.Rho_mask.nii',aff ,head)
     niiwrite_nv(Rho_maps,    mask,outDir+outPrefix+'.chComp.Rho.nii',aff ,head)
     niiwrite_nv(Weight_maps, mask,outDir+outPrefix+'.chComp.weightMaps.nii',aff ,head)   
-    return features
+    if doFM:
+        niiwrite_nv(FM_Slope_map , mask,outDir+outPrefix+'.chComp.FM.Slope.nii',aff ,head)
+        niiwrite_nv(FM_Inter_map , mask,outDir+outPrefix+'.chComp.FM.Inter.nii',aff ,head)
+        niiwrite_nv(FM_p_map , mask,outDir+outPrefix+'.chComp.FM.p.nii',aff ,head)
+        niiwrite_nv(FM_r_map , mask,outDir+outPrefix+'.chComp.FM.r.nii',aff ,head)
+        niiwrite_nv(FM_Slope_err_map , mask,outDir+outPrefix+'.chComp.FM.Slope.err.nii',aff ,head)
+        niiwrite_nv(FM_Slope_T_map , mask,outDir+outPrefix+'.chComp.FM.Slope.T.nii',aff ,head)
+        niiwrite_nv(FM_Slope_p_map , mask,outDir+outPrefix+'.chComp.FM.Slope.p.nii',aff ,head)
+    return df_feats
     
 
 
@@ -595,17 +650,12 @@ def writeCompTable(origCommandLine, out_dir,data_file, features, varexp, psel, N
     Nc,_ = features.shape
     ts = time.time()
     st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-    #all_sorted_idxs   = (features[np.argsort(features[:,sort_col]),0][::-1]).astype('int')
     Ngood = (psel==1).sum()
     Nbad  = (psel==0).sum()
     midk  = []
     rej                 = np.where(psel==0)[0]
-    #rej_sorting_feature = features[rej,:]
-    #rej_sorted_idxs     = np.atleast_2d(rej[np.argsort(rej_sorting_feature)[::-1]])
     np.savetxt(out_dir+'rejected.txt',rej,fmt='%d',delimiter=',')
     acc                 = np.where(psel==1)[0]
-    #acc_sorting_feature = features[acc,:]
-    #acc_sorted_idxs     = np.atleast_2d(acc[np.argsort(acc_sorting_feature)[::-1]])
     np.savetxt(out_dir+'accepted.txt',acc,fmt='%d',delimiter=',')
     open(out_dir+'midk_rejected.txt','w').write(','.join([str(int(cc)) for cc in midk]))
     with open(out_dir+'comp_table.txt','w') as f:
@@ -625,9 +675,5 @@ def writeCompTable(origCommandLine, out_dir,data_file, features, varexp, psel, N
         f.write("#IGN    \t#Ignored components (kept in denoised time series)\n")
         f.write("#VEx  TCo   DFe   RJn   DFn   \n")
         f.write("##%.02f  %i %i %i %i \n" % (varexp,Nc,Ngood,Nbad,Nt-Nbad))
-        f.write("#  comp  Kappa Rho   %%Var %%VarN	MaxR2	MaxS0	Ratio    maxZICA    NvZmask    NvFR2mask    NvFS0mask NvKapMask    NvRhoMask\n")
-        idx = 0
-        for i in range(Nc):
-            f.write('%d\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\t%d\n'%(features[i,0],features[i,1],features[i,2],features[i,3],features[i,3],features[i,4],features[i,5],features[i,6],features[i,7],
-                    features[i,8],features[i,9],features[i,10],features[i,11],features[i,12]))
-            idx=idx+1
+        f.write("#")
+        features.to_csv(f,sep='\t', index=False)

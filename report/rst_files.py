@@ -73,15 +73,14 @@ def analysis_rst(accept, reject, middle, ignore, nsmprage, threshold, ctab, min_
 	
 	N = 0	
 	for i in accept[:,0]:
-		sl.append('\nC%03d:[Rt=%5.2f,V=%5.2f]' % (int(i),accept[N,7],accept[N,3]))
-		#sl.append('\nComponent %s: Var %s' % (int(i),digit_length(accept[N,3],2)))
+		sl.append('\nC%03d:[Rt=%5.2f,V=%5.2f]' % (int(i),accept[N,6],accept[N,3]))
 		sl.append('-----------------------------\n')
-		sl.append('============  ============  ============  ============  ============  ============  ============')
-		sl.append('   kappa           rho         %%Var         %%Var(n)      maxR2          maxS0        Ratio    ')
-		sl.append('============  ============  ============  ============  ============  ============  ============')
-		sl.append('%12.4f  %12.4f  %12.4f  %12.4f  %12.4f  %12.4f  %12.4f' %
-			(accept[N,1],accept[N,2],accept[N,3],accept[N,4],accept[N,5],accept[N,6],accept[N,7]))
-		sl.append('============  ============  ============  ============  ============  ============  ============\n')
+		sl.append('============  ============  ============  ============  ============  ============')
+		sl.append('   kappa           rho         %%Var      maxR2          maxS0        Ratio    ')
+		sl.append('============  ============  ============  ============  ============  ============')
+		sl.append('%12.4f  %12.4f  %12.4f  %12.4f  %12.4f  %12.4f' %
+			(accept[N,1],accept[N,2],accept[N,3],accept[N,4],accept[N,5],accept[N,6]))
+		sl.append('============  ============  ============  ============  ============  ============\n')
 		if Axial: sl.append('.. image:: %s/Axial_Component_' % figures + (size - len(str(int(i))))*'0' + '%s.png' % int(i)) ; sl.append('	:width: 95%')
 		if Sagittal:  sl.append('.. image:: %s/Sagittal_Component_' % figures + (size - len(str(int(i))))*'0' + '%s.png' % int(i)); sl.append('	:width: 95%')
 		if Coronal:  sl.append('.. image:: %s/Coronal_Component_' % figures + (size - len(str(int(i))))*'0' + '%s.png' % int(i)); sl.append('	:width: 95%')
@@ -95,15 +94,14 @@ def analysis_rst(accept, reject, middle, ignore, nsmprage, threshold, ctab, min_
 	sl.append('The following images are the rejected components from meica ouput')
 	N = 0
 	for i in reject[:,0]:
-		sl.append('\nC%03d:[Rt=%5.2f,V=%5.2f]' % (int(i),reject[N,7],reject[N,3]))
-		#sl.append('\nComponent %s: Var %s' % (int(i),digit_length(reject[N,3],2)))
+		sl.append('\nC%03d:[Rt=%5.2f,V=%5.2f]' % (int(i),reject[N,6],reject[N,3]))
 		sl.append('-----------------------------\n')
-		sl.append('============  ============  ============  ============  ============  ============  ============')
-		sl.append('   kappa           rho         %%Var         %%Var(n)      maxR2          maxS0        Ratio    ')
-		sl.append('============  ============  ============  ============  ============  ============  ============')
-		sl.append('%12.4f  %12.4f  %12.4f  %12.4f  %12.4f  %12.4f  %12.4f' %
-			(reject[N,1],reject[N,2],reject[N,3],reject[N,4],reject[N,5],reject[N,6],reject[N,7]))
-		sl.append('============  ============  ============  ============  ============  ============  ============\n')
+		sl.append('============  ============  ============  ============  ============  ============')
+		sl.append('   kappa           rho         %%Var      maxR2          maxS0        Ratio    ')
+		sl.append('============  ============  ============  ============  ============  ============')
+		sl.append('%12.4f  %12.4f  %12.4f  %12.4f  %12.4f  %12.4f' %
+			(reject[N,1],reject[N,2],reject[N,3],reject[N,4],reject[N,5],reject[N,6]))
+		sl.append('============  ============  ============  ============  ============  ============\n')
 		if Axial: sl.append('.. image:: %s/Axial_Component_' % figures + (size - len(str(int(i))))*'0' + '%s.png' % int(i)) ; sl.append('	:width: 95%')
 		if Sagittal:  sl.append('.. image:: %s/Sagittal_Component_' % figures + (size - len(str(int(i))))*'0' + '%s.png' % int(i)); sl.append('	:width: 95%')
 		if Coronal:  sl.append('.. image:: %s/Coronal_Component_' % figures + (size - len(str(int(i))))*'0' + '%s.png' % int(i)); sl.append('	:width: 95%')
