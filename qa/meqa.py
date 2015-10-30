@@ -11,6 +11,29 @@ order legendre polynomials to the residual. We compute the standard deviation of
 deviation of the residual itself to be less senstitive to voxels with large residuals that do not necessarily signal
 a slow drift in the residuals (e.g., a slow difference in drift in the echoes).
 
+Static S0 and T2* Maps
+----------------------
+In addition, this program can also be used to generate static T2* and S0 maps using a non-linear optimizer. To request
+the computation of such maps you must use the --get_static_maps option. Other parameters associated with this particular
+procdure are:
+    
+   --So_init:   Initial Guess for the S0 value.  Default=2500
+   --T2s_init:  Initial Guess for the T2s value. Default=40ms
+   --So_min:    Lowest admissible S0 value.      Default=100
+   --So_max:    Highest admissible S0 value.     Default=10000
+   --T2s_min:   Lowest admissible T2s value.     Default=10ms
+   --T2s_max:   Highest admissible T2s value.    Default=300ms
+    
+If none of these are provided, the software will use the default values. The addtional outputs, when static maps are requested, 
+include:
+    
+    * <prefix>.sTE.t2s.nii: Voxel-wise static T2* map.
+    * <prefix>.sTE.S0.nii:  Voxel-wise static So map.
+    * <prefix>.sTE.SSE.nii: Voxel-wise Squared Standard Errors associated with the non-linear static fit.
+    * <prefix>.sTE.mask.nii:Mask with voxels for which the non-linear optimizer was able to find values for t2s and So within
+      the provided ranges. I usually find a few bad voxels in the ventricles and CSF around the brain. Other than that, the 
+      mask should contain the whole intracranial volume. (1=good voxels | 0=bad voxels).
+    
 Dependences:
 ------------
 This program was coded and tested with Python 2.7.10.
@@ -53,7 +76,18 @@ This program will take require to a minimum the following inputs:
                              
 A sample command line would be:
 -------------------------------
-    python meqa.py -d MEdataset.nii -e 12,24,35 --prefix MEdatataset --debug
+
+    CASE (1) Do QA Only, asking for all intermediate files
+    
+    $ python meqa.py -d MEdataset.nii -e 12,24,35 --prefix MEdatataset --debug
+    
+    CASE (2) Do QA and Static Maps using default settings.
+    
+    $ python meqa.py -d MEdataset.nii -e 12,24,35 --prefix MEdatataset --get_static_maps
+    
+    Case (3) Do QA and Static Maps, but using a different initial guess for voxel-wise T2*.
+    
+    $ python meqa.py -d MEdataset.nii -e 12,24,35 --prefix MEdatataset --get_static_maps --T2s_init 30
     
 One way to explore the output of this program is:
 -------------------------------------------------    
@@ -232,7 +266,8 @@ def linearFit(data, tes,Ncpu, dataMean=None):
 	fit_residual[v,:] = result[v]['fit_residual'] 
 	datahat[v,:,:]    = result[v]['datahat'] 
     return dkappa,drho,fit_residual,rcond,datahat
-	
+
+# === FUNCTION: getMeanByPolyFit	
 def getMeanByPolyFit(data,polort=4):
    """ 
    This function computes the mean across time for all voxels and echoes using
@@ -258,6 +293,7 @@ def getMeanByPolyFit(data,polort=4):
    mean    = np.reshape(linRegObj.coef_[:,0],(Nv,Ne))
    return mean
 
+# === FUNCTION: computeQA
 def computeQA(data,tes,Ncpu,data_mean=None):
     """
     Simple function to compute the amount of variance in the data that is explained by
@@ -298,6 +334,73 @@ def computeQA(data,tes,Ncpu,data_mean=None):
     fit2residual_std = fit2residual.std(axis=1)
     return SSE,rankSSE,residual,fit2residual,fit2residual_std
 
+# === FUNCTION: make_static_maps_opt
+def objective(x,Sv,aux_tes):
+    return np.sqrt(sum((Sv-(x[0]*np.exp(-aux_tes/x[1])))*(Sv-(x[0]*np.exp(-aux_tes/x[1])))))
+
+def make_static_opt_perVoxel(item):
+   data_mean = item['data_mean']
+   tes       = item['tes']
+   So_init   = item['So_init']
+   T2s_init  = item['T2s_init']
+   So_min    = item['So_min']
+   So_max    = item['So_max']
+   T2s_min   = item['T2s_min']
+   T2s_max   = item['T2s_max']
+   Optimizer = item['Optimizer']
+   result      = opt.minimize(objective, [So_init,T2s_init],args=(data_mean,tes), method=Optimizer,bounds=((So_min, So_max), (T2s_min, T2s_max)))
+   v_fiterror  = result.fun
+   v_S0        = result.x[0]
+   v_t2s       = result.x[1]
+   if (~result.success) or (v_t2s >= T2s_max-.05) or (v_t2s <= T2s_min+.05) or (v_S0 >= So_max-.05) or (v_S0 <= So_min+.05): 
+     v_badFit  = 1
+   else:
+     v_badFit  = 0
+   return {'v_S0':v_S0, 'v_t2s':v_t2s, 'v_fiterror':v_fiterror, 'v_badFit':v_badFit}
+
+def make_static_maps_opt(data_mean,tes,Ncpu,So_init=2500,T2s_init=40,So_min=100,So_max=10000,T2s_min=10, T2s_max=300,Optimizer='SLSQP'):
+   """
+   This function computes static maps of S0 and T2s using scipy optimization
+
+   Parameters:
+   -----------
+   data_mean: Mean across time of the ME dataset (Nv,Ne)
+   tes:       Echo times used to acquire the data
+   So_init:   Initial Guess for the S0 value.  Default=2500
+   T2s_init:  Initial Guess for the T2s value. Default=40ms
+   So_min:    Lowest admissible S0 value.      Default=100
+   So_max:    Highest admissible S0 value.     Default=10000
+   T2s_min:   Lowest admissible T2s value.     Default=10ms
+   T2s_max:   Highest admissible T2s value.    Default=300ms
+   Optimizer: Optimization Algorithm.          Default=SLSQP
+   Returns:
+   --------
+   S0:        Static S0 map  (Nv,)
+   t2s:       Static T2s map (Nv,)
+   SSE:       Sum of Squared Errors (Nv,)
+   BadFits:   Voxels marked as bad fits by the optimizer (Nv,)
+   """
+   print " + INFO [make_static_maps_opt]: Initial conditions [So=%i, T2s=%i]" % (So_init, T2s_init)
+   print " + INFO [make_static_maps_opt]: Bounds So=[%i,%i] & T2s=[%i,%i]" % (So_min, So_max, T2s_min, T2s_max)
+   print " + INFO [make_static_maps_opt]: Optimizer = %s" % Optimizer
+   
+   Nv,Ne    = data_mean.shape
+   S0       = np.zeros(Nv,)
+   t2s      = np.zeros(Nv,)
+   badFits  = np.zeros(Nv,)
+   fiterror = np.zeros(Nv,)
+
+   print " +              Multi-process Static Map Fit -> Ncpu = %d" % Ncpu
+   pool   = Pool(processes=Ncpu)
+   result = pool.map(make_static_opt_perVoxel, [{'data_mean':data_mean[v,:],'tes':tes,'So_init':So_init,'So_max':So_max,'So_min':So_min,'T2s_init':T2s_init,'T2s_max':T2s_max,'T2s_min':T2s_min,'Optimizer':Optimizer} for v in np.arange(Nv)]) 
+   for v in np.arange(Nv):
+     S0[v]  = result[v]['v_S0']
+     t2s[v] = result[v]['v_t2s']
+     fiterror[v] = result[v]['v_fiterror']
+     badFits[v]  = result[v]['v_badFit']
+   print " + INFO [make_static_maps_opt]: Number of Voxels with errors: %i" % badFits.sum()
+   return S0, t2s, fiterror, badFits
+
 # =================================================================================================================
 # =================================             MAIN PROGRAM                =======================================
 # =================================================================================================================
@@ -309,16 +412,18 @@ if __name__=='__main__':
     dep_check()
     import numpy              as np
     import nibabel            as nib
+    import scipy.optimize     as opt
     from argparse             import ArgumentParser,RawTextHelpFormatter
     from multiprocessing      import cpu_count,Pool
     from scipy.special        import legendre
     from sklearn.linear_model import LinearRegression
     from scipy.stats          import rankdata
-
+    
     # =================================================================================================================
     # =================================         PARSING OF INPUT PARAMETERS     =======================================
     # =================================================================================================================
     parser = ArgumentParser(description=help_desc,formatter_class=RawTextHelpFormatter)
+    statFitGrp = parser.add_argument_group('Arguments for static T2* and S0 fits')
     parser.add_argument("-d","--orig_data",        dest='data_file',      help="Spatially concatenated Multi-Echo Dataset",type=str,   default=None)
     parser.add_argument("-e","--TEs",              dest='tes',            help="Echo times (in ms) ex: 15,39,63",          type=str,   default=None)
     parser.add_argument(     "--tes_file",         dest='tes_file',       help="Path to file with Echo time information",  type=str,   default=None)
@@ -327,7 +432,21 @@ if __name__=='__main__':
     parser.add_argument(     "--ncpus",            dest='Ncpus',          help='Number of cpus available. Default will be #available/2', default=None, type=int)
     parser.add_argument(     "--mask",             dest='mask_file',      help='Path to the mask to use during the analysis. If not provided, one will be computed automatically',type=str, default=None)
     parser.add_argument(     "--debug",            dest='debug',          help='Flag to write out additional files',action='store_true')
+    
+    statFitGrp.add_argument("--get_static_maps", dest='do_static_fit', help='Flag to ask for static T2* and S0 maps', action='store_true')
+    statFitGrp.add_argument("--So_init", dest='So_init',  help='Initial Guess for the S0 value.  Default=2500', type=float, default=2500)
+    statFitGrp.add_argument("--T2s_init",dest='T2s_init', help='Initial Guess for the T2s value. Default=40ms', type=float, default=40)
+    statFitGrp.add_argument("--So_min",  dest='So_min',   help='Lowest admissible S0 value.      Default=100', type=float,  default=100)
+    statFitGrp.add_argument("--So_max",  dest='So_max',   help='Highest admissible S0 value.     Default=10000', type=float,default=10000)
+    statFitGrp.add_argument("--T2s_min", dest='T2s_min',  help='Lowest admissible T2s value.     Default=10ms', type=float, default=10)
+    statFitGrp.add_argument("--T2s_max", dest='T2s_max',  help='Highest admissible T2s value.    Default=300ms', type=float,default=300)
     options  = parser.parse_args()
+    So_init  = float(options.So_init)
+    So_min   = float(options.So_min)
+    So_max   = float(options.So_max)
+    T2s_init = float(options.T2s_init)
+    T2s_min  = float(options.T2s_min)
+    T2s_max  = float(options.T2s_max)
     
     # If no number of CPUs is provided, we will use half the available number of CPUs or 1 if only 1 is available
     if cpu_count()==1:
@@ -443,3 +562,22 @@ if __name__=='__main__':
         niiwrite_nv(QA_Residual,         mask, QA_Residual_path, mepi_aff ,mepi_head)
         niiwrite_nv(QA_ResidualFit,      mask, QA_ResidualFit_path, mepi_aff ,mepi_head)
     niiwrite_nv(QA_ResidualFit_stdv, mask, QA_ResidualFit_stdv_path, mepi_aff ,mepi_head)
+    
+    # =================================================================================================================
+    # =================================                STATIC FIT               =======================================
+    # =================================================================================================================
+    if options.do_static_fit:
+        print "++ INFO [Main]: Static T2* and S0 maps requested..."
+        stFit_S0_path  = os.path.join(outputDir,options.prefix+'.sTE.S0.nii')
+        stFit_t2s_path = os.path.join(outputDir,options.prefix+'.sTE.t2s.nii')
+        stFit_SSE_path = os.path.join(outputDir,options.prefix+'.sTE.SSE.nii')
+        stFit_bVx_path = os.path.join(outputDir,options.prefix+'.sTE.mask.nii')
+        mask_bad_staticFit = np.zeros((Nv,), dtype=bool)
+        
+        S0, t2s, SSE, mask_bad_staticFit = make_static_maps_opt(SME_mean,tes,Ncpu,So_init=So_init,T2s_init=T2s_init,So_min=So_min,So_max=So_max,T2s_min=T2s_min, T2s_max=T2s_max)
+       
+        mask_bad_staticFit = np.logical_not(mask_bad_staticFit)
+        niiwrite_nv(S0                ,mask,stFit_S0_path, mepi_aff ,mepi_head)
+        niiwrite_nv(t2s               ,mask,stFit_t2s_path,mepi_aff ,mepi_head)
+        niiwrite_nv(SSE               ,mask,stFit_SSE_path,mepi_aff ,mepi_head)
+        niiwrite_nv(mask_bad_staticFit,mask,stFit_bVx_path,mepi_aff ,mepi_head) 
