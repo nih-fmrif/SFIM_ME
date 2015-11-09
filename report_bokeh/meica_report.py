@@ -112,21 +112,21 @@ print "++ INFO [Main]: FS0 Maps [%s] loaded successfully. [%s]" % (options.dir+o
 cS0_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.cS0.nii')
 print "++ INFO [Main]: FS0 Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.cS0.nii',cS0_maps.shape)
 KM_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.Kappa_mask.nii'); KM_maps=(KM_maps>0);
-print "++ INFO [Main]: Kappa Masks [%s] loaded successfully." % (options.dir+options.runID+'.chComp.Kappa_mask.nii')
+print "++ INFO [Main]: Kappa Masks [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.Kappa_mask.nii',KM_maps.shape)
 RM_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.Rho_mask.nii'); RM_maps=(RM_maps>0);
-print "++ INFO [Main]: Rho Masks [%s] loaded successfully." % (options.dir+options.runID+'.chComp.Rho_mask.nii')
+print "++ INFO [Main]: Rho Masks [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.Rho_mask.nii',RM_maps.shape)
 Kappa_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.Kappa.nii')
-print "++ INFO [Main]: Kappa Maps [%s] loaded successfully." % (options.dir+options.runID+'.chComp.Kappa.nii')
+print "++ INFO [Main]: Kappa Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.Kappa.nii',Kappa_maps.shape)
 Rho_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.Rho.nii')
-print "++ INFO [Main]: Rho Maps [%s] loaded successfully." % (options.dir+options.runID+'.chComp.Rho.nii')
+print "++ INFO [Main]: Rho Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.Rho.nii',Rho_maps.shape)
 ICA_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.ICA.Zmaps.nii')
-print "++ INFO [Main]: ICA Maps [%s] loaded successfully." % (options.dir+options.runID+'.ICA.Zmaps.nii')
+print "++ INFO [Main]: ICA Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.ICA.Zmaps.nii',ICA_maps.shape)
 ICAM_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.ICA.Zmaps.mask.nii'); ICAM_maps=(ICAM_maps>0);
-print "++ INFO [Main]: ICA Masks [%s] loaded successfully." % (options.dir+options.runID+'.ICA.Zmaps.mask.nii')
+print "++ INFO [Main]: ICA Masks [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.ICA.Zmaps.mask.nii',ICAM_maps.shape)
 mask_orig,_,_ = meb.niiLoad(options.dir+options.runID+'.mask.orig.nii'); mask_orig = (mask_orig>0);
-print "++ INFO [Main]: ICA Masks [%s] loaded successfully." % (options.dir+options.runID+'.mask.orig.nii')
+print "++ INFO [Main]: Original Mask [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.mask.orig.nii',mask_orig.shape)
 Wgth_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.weightMaps.nii')
-print "++ INFO [Main]: ICA Masks [%s] loaded successfully." % (options.dir+options.runID+'.chComp.weightMaps.nii')
+print "++ INFO [Main]: Weight Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.weightMaps.nii',Wgth_maps.shape)
 
 Nt, Nc              = comp_timeseries.shape
 fica_psel           = np.zeros((Nc,))
@@ -357,6 +357,8 @@ for c in range(Nc):
     FR2_hist[c,:], aux = np.histogram(aux_input,Nbins, density=histUseDensity)
     FR2_Ledges[c,:]    = aux[:-1]
     FR2_Redges[c,:]    = aux[1:]
+    _,_,Nz         = aux_FR2.shape
+    print Nz
     
     aux_cR2       = np.squeeze(cR2_maps[:,:,:,c])
     aux_input     = aux_cR2[aux_mask_Kappa]
@@ -405,6 +407,10 @@ for c in range(Nc):
     uICA_Redges[c,:]    = aux[1:]
     
     #Weight Maps
+    _,_,Nzz = aux_mask_ICA.shape
+    print Nzz
+    if ~(Nzz==Nz):
+        aux_mask_ICA = aux_mask_ICA[:,:,np.arange(Nz)]
     aux_Wgth   = np.squeeze(Wgth_maps[:,:,:,c])
     aux_input  = aux_Wgth[aux_mask_ICA] ##### <--------------- Need to think of appropriate masking here
     Wgth_hist[c,:], aux = np.histogram(aux_input, Nbins)

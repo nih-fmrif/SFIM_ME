@@ -459,6 +459,6 @@ if __name__=='__main__':
     var_orig      = (np.reshape(SME_nm,(Nv*Ne,Nt),order='F')**2).sum()/Ne #var_orig      = (Sdemean**2).sum()/Ne
     var_afterPCA  = ((octs_afterPCA-octs_afterPCA.mean(axis=-1)[:,np.newaxis])**2.).sum()
     
-    meb.writeCompTable(origCommandLine, options.out_dir, options.data_file, fica_feats, 100*(var_afterPCA/var_orig), fica_psel, Nt, 6)
+    meb.writeCompTable(origCommandLine, options.out_dir, options.data_file, fica_feats, 100*(var_afterPCA/var_orig),100*(var_afterPCA/var_orig),100*(var_afterPCA/var_orig), fica_psel, Nt, 6)
     print "++ INFO [Main]: Successfull Completion of the Analysis."
     print "++ INFO [Main]: =======================================" 
