@@ -179,32 +179,41 @@ def mask4MEdata(data):
 
 # === FUNCTION: niiwrite_nv
 def niiwrite_nv(data,mask,temp_path,aff,temp_header):
-    """
-    This function will write NIFTI datasets
+        """
+        This function will write NIFTI datasets
 
-    Parameters:
-    ----------
-    data: this is (Nv, Nt) or (Nv,) array. No z-cat ME datasets allowed.
-    mask: this is (Nx,Ny,Nz) array with Nv entries equal to True. This is an intracranial voxel mask.
-    temp_path: this is the output directory.
-    aff: affine transformation associated with this dataset.
-    temp_header: header for the dataset.  
-	
-    Returns:
-    --------
-    None.
-    """
-    Nx,Ny,Nz   = mask.shape
-    if (data.ndim ==1):
-	temp       = np.zeros((Nx,Ny,Nz),order='F')
-	temp[mask] = data
-    if (data.ndim ==2):
-	_,Nt = data.shape
-	temp         = np.zeros((Nx,Ny,Nz,Nt),order='F')
-	temp[mask,:] = data
-    outni      = nib.Nifti1Image(temp,aff,header=temp_header)
-    outni.to_filename(temp_path)
-    print " +              Dataset %s written to disk" % (temp_path)
+        Parameters:
+        ----------
+        data: this is (Nv, Nt) or (Nv,) array. No z-cat ME datasets allowed.
+        mask: this is (Nx,Ny,Nz) array with Nv entries equal to True. This is an intracranial voxel mask.
+        temp_path: this is the output directory.
+        aff: affine transformation associated with this dataset.
+        temp_header: header for the dataset.  
+        
+        Returns:
+        --------
+        None.
+        """
+        Nx,Ny,Nz   = mask.shape
+        if (data.ndim ==1):
+                temp       = np.zeros((Nx,Ny,Nz),order='F')
+                temp[mask] = data
+        if (data.ndim ==2):
+                        _,Nt = data.shape
+                        temp         = np.zeros((Nx,Ny,Nz,Nt),order='F')
+                        temp[mask,:] = data
+        if (data.ndim ==3):
+                        Nv, Ne, Nt   = data.shape
+                        temp         = np.zeros((Nx,Ny,Nz,Nt),order='F')
+                        temp[mask,:] = np.squeeze(data[:,0,:])
+                        for e in range(1,Ne):
+                                aux       = np.zeros((Nx,Ny,Nz,Nt),order='F')
+                                aux[mask,:] = np.squeeze(data[:,e,:])
+                                temp = np.concatenate((temp,aux),axis=2)
+
+        outni      = nib.Nifti1Image(temp,aff,header=temp_header)
+        outni.to_filename(temp_path)
+        print " +              Dataset %s written to disk" % (temp_path)
 
 # === FUNCTION: linearFit
 def linearFit_perVoxel(item):
@@ -229,7 +238,7 @@ def linearFit_perVoxel(item):
   db[1,:]      = dkappa
   return {'dkappa':dkappa,'drho':drho, 'fit_residual':fit_residual,'rcond':rcond,'datahat':datahat}
 
-def linearFit(data, tes,Ncpu, dataMean=None):
+def linearFit(data, tes,Ncpus, dataMean=None):
     """
     This function will compute the fit of ME data using a least square approach
     
@@ -256,7 +265,7 @@ def linearFit(data, tes,Ncpu, dataMean=None):
     datahat      = np.zeros((Nv,Ne,Nt))
     if dataMean is  None:
 	dataMean     = data.mean(axis=2)
-    pool   = Pool(processes=Ncpu)
+    pool   = Pool(processes=Ncpus)
     result = pool.map(linearFit_perVoxel, [{'DeltaS':data[v,:,:] - np.tile(dataMean[v,:].reshape((Ne,1)),Nt),'Smean':dataMean[v,:],'tes':tes,'Ne':int(Ne),'Nt':int(Nt)} for v in np.arange(Nv)]) 
     
     for v in range(Nv):
@@ -268,7 +277,7 @@ def linearFit(data, tes,Ncpu, dataMean=None):
     return dkappa,drho,fit_residual,rcond,datahat
 
 # === FUNCTION: getMeanByPolyFit	
-def getMeanByPolyFit(data,polort=4):
+def getMeanByPolyFit(data,Ncpus,polort=4):
    """ 
    This function computes the mean across time for all voxels and echoes using
    legendre polynomial fitting. More robust against slow dirfts
@@ -288,13 +297,13 @@ def getMeanByPolyFit(data,polort=4):
    for n in range(polort):
       drift[:,n]=np.polyval(legendre(n),x)
    # 2. Fit polynomials to residuals
-   linRegObj= LinearRegression(normalize=False,fit_intercept=False)
+   linRegObj= LinearRegression(normalize=False,fit_intercept=False, n_jobs=Ncpus)
    linRegObj.fit(drift,aux.T)
    mean    = np.reshape(linRegObj.coef_[:,0],(Nv,Ne))
    return mean
 
 # === FUNCTION: computeQA
-def computeQA(data,tes,Ncpu,data_mean=None):
+def computeQA(data,tes,Ncpus,data_mean=None):
     """
     Simple function to compute the amount of variance in the data that is explained by
     the ME fit
@@ -312,10 +321,10 @@ def computeQA(data,tes,Ncpu,data_mean=None):
     """
     Nv,Ne,Nt        = data.shape
     if data_mean is None:
-       data_mean = getMeanByPolyFit(data,polort=4)
+       data_mean = getMeanByPolyFit(data,Ncpus,polort=4)
     data_demean            = data - data_mean[:,:,np.newaxis]
-    dkappa, drho,residual,rcond,data_hat = linearFit(data,tes,Ncpu,data_mean)
-    data_hat_mean                        = getMeanByPolyFit(data_hat,polort=4)
+    dkappa, drho,residual,rcond,data_hat = linearFit(data,tes,Ncpus,data_mean)
+    data_hat_mean                        = getMeanByPolyFit(data_hat,Ncpus,polort=4)
     data_demean_hat                      = data_hat - data_hat_mean[:,:,np.newaxis]
 
     SSE             = ((data_demean - data_demean_hat)**2).sum(axis=-1).max(axis=-1)
@@ -328,11 +337,13 @@ def computeQA(data,tes,Ncpu,data_mean=None):
     for n in range(Npoly):
         drift[:,n] = np.polyval(legendre(n),x)
     # 2. Fit polynomials to residuals
-    linRegObj        = LinearRegression(normalize=False,fit_intercept=True)
-    linRegObj.fit(drift,residual.T,n_jobs=-1)
-    fit2residual     = np.transpose(linRegObj.predict(drift))
-    fit2residual_std = fit2residual.std(axis=1)
-    return SSE,rankSSE,residual,fit2residual,fit2residual_std
+    linRegObj        = LinearRegression(normalize=False,fit_intercept=True, n_jobs=Ncpus)
+    linRegObj.fit(drift,residual.T)
+    fit2residual      = np.transpose(linRegObj.predict(drift))
+    fit2residual_std  = fit2residual.std(axis=1)
+    fit2residual_norm = ( fit2residual - fit2residual.mean(axis=1)[:,np.newaxis] ) / fit2residual.mean(axis=1)[:,np.newaxis]
+    meqa_norm         = fit2residual_norm.std(axis=1)
+    return SSE,rankSSE,residual,fit2residual,fit2residual_std,meqa_norm
 
 # === FUNCTION: make_static_maps_opt
 def objective(x,Sv,aux_tes):
@@ -358,7 +369,7 @@ def make_static_opt_perVoxel(item):
      v_badFit  = 0
    return {'v_S0':v_S0, 'v_t2s':v_t2s, 'v_fiterror':v_fiterror, 'v_badFit':v_badFit}
 
-def make_static_maps_opt(data_mean,tes,Ncpu,So_init=2500,T2s_init=40,So_min=100,So_max=10000,T2s_min=10, T2s_max=300,Optimizer='SLSQP'):
+def make_static_maps_opt(data_mean,tes,Ncpus,So_init=2500,T2s_init=40,So_min=100,So_max=10000,T2s_min=10, T2s_max=300,Optimizer='SLSQP'):
    """
    This function computes static maps of S0 and T2s using scipy optimization
 
@@ -390,8 +401,8 @@ def make_static_maps_opt(data_mean,tes,Ncpu,So_init=2500,T2s_init=40,So_min=100,
    badFits  = np.zeros(Nv,)
    fiterror = np.zeros(Nv,)
 
-   print " +              Multi-process Static Map Fit -> Ncpu = %d" % Ncpu
-   pool   = Pool(processes=Ncpu)
+   print " +              Multi-process Static Map Fit -> Ncpus = %d" % Ncpus
+   pool   = Pool(processes=Ncpus)
    result = pool.map(make_static_opt_perVoxel, [{'data_mean':data_mean[v,:],'tes':tes,'So_init':So_init,'So_max':So_max,'So_min':So_min,'T2s_init':T2s_init,'T2s_max':T2s_max,'T2s_min':T2s_min,'Optimizer':Optimizer} for v in np.arange(Nv)]) 
    for v in np.arange(Nv):
      S0[v]  = result[v]['v_S0']
@@ -450,13 +461,13 @@ if __name__=='__main__':
     
     # If no number of CPUs is provided, we will use half the available number of CPUs or 1 if only 1 is available
     if cpu_count()==1:
-        Ncpu = 1;
+        Ncpus = 1;
     else:
         if (options.Ncpus is None) or (options.Ncpus > cpu_count()):
-            Ncpu = int(cpu_count()/2)
+            Ncpus = int(cpu_count()/2)
         else:
-            Ncpu = int(options.Ncpus) 
-    print "++ INFO [Main]: Number of CPUs to use: %d" % (Ncpu)
+            Ncpus = int(options.Ncpus) 
+    print "++ INFO [Main]: Number of CPUs to use: %d" % (Ncpus)
     
     # Control all necessary inputs are available
     # ------------------------------------------
@@ -534,13 +545,13 @@ if __name__=='__main__':
     # =================================================================================================================
     # =================================        COMPUTE MEAN ACROSS TIME         =======================================
     # =================================================================================================================
-    print "++ INFO [Main]: Compuitng Mean across time for all echoes...."  
+    print "++ INFO [Main]: Computing Mean across time for all echoes...."  
     # There are two options here:
     #   (1) Simply use the mean command.
     #       Smean_case01 = SME.mean(axis=-1)
     #   (2) Compute the mean at the same time you fit some legendre polynomials, to remove the influence
     #   of small drits in the computation. It should make almost no difference.
-    Smean_case02 = getMeanByPolyFit(SME,polort=4)
+    Smean_case02 = getMeanByPolyFit(SME,Ncpus,polort=4)
     SME_mean     = Smean_case02
     
     # =================================================================================================================
@@ -548,21 +559,23 @@ if __name__=='__main__':
     # =================================================================================================================
     
     print "++ INFO [Main]: Quality Assurance...."        
-    QA_SSE_path              = os.path.join(outputDir,options.prefix+'.QAC.SSE.nii')
-    QA_SSE_rank_path         = os.path.join(outputDir,options.prefix+'.QAC.SSE_rank.nii')
-    QA_Residual_path         = os.path.join(outputDir,options.prefix+'.QAC.Residual.nii')
-    QA_ResidualFit_path      = os.path.join(outputDir,options.prefix+'.QAC.ResidualFit.nii')
-    QA_ResidualFit_stdv_path = os.path.join(outputDir,options.prefix+'.QAC.ResidualFit_stdv.nii')
+    QA_SSE_path                   = os.path.join(outputDir,options.prefix+'.QAC.SSE.nii')
+    QA_SSE_rank_path              = os.path.join(outputDir,options.prefix+'.QAC.SSE_rank.nii')
+    QA_Residual_path              = os.path.join(outputDir,options.prefix+'.QAC.Residual.nii')
+    QA_ResidualFit_path           = os.path.join(outputDir,options.prefix+'.QAC.ResidualFit.nii')
+    QA_ResidualFit_stdv_path      = os.path.join(outputDir,options.prefix+'.QAC.ResidualFit_stdv.nii')
+    QA_MEQAnorm_path              = os.path.join(outputDir,options.prefix+'.QAC.MEQAnorm.nii')
 
     print " +              Computing QA metrics from data."
-    QA_SSE,QA_SSE_Rank,QA_Residual, QA_ResidualFit, QA_ResidualFit_stdv =computeQA(SME,tes,Ncpu,data_mean=SME_mean)
+    QA_SSE,QA_SSE_Rank,QA_Residual, QA_ResidualFit, QA_ResidualFit_stdv, QA_MEQAnorm = computeQA(SME,tes,Ncpus,data_mean=SME_mean)
     if options.debug:
         niiwrite_nv(QA_SSE_Rank,         mask, QA_SSE_rank_path, mepi_aff ,mepi_head)
         niiwrite_nv(QA_SSE,              mask, QA_SSE_path     , mepi_aff ,mepi_head)
         niiwrite_nv(QA_Residual,         mask, QA_Residual_path, mepi_aff ,mepi_head)
         niiwrite_nv(QA_ResidualFit,      mask, QA_ResidualFit_path, mepi_aff ,mepi_head)
     niiwrite_nv(QA_ResidualFit_stdv, mask, QA_ResidualFit_stdv_path, mepi_aff ,mepi_head)
-    
+    niiwrite_nv(QA_MEQAnorm, mask, QA_MEQAnorm_path, mepi_aff ,mepi_head)
+ 
     # =================================================================================================================
     # =================================                STATIC FIT               =======================================
     # =================================================================================================================
@@ -574,7 +587,7 @@ if __name__=='__main__':
         stFit_bVx_path = os.path.join(outputDir,options.prefix+'.sTE.mask.nii')
         mask_bad_staticFit = np.zeros((Nv,), dtype=bool)
         
-        S0, t2s, SSE, mask_bad_staticFit = make_static_maps_opt(SME_mean,tes,Ncpu,So_init=So_init,T2s_init=T2s_init,So_min=So_min,So_max=So_max,T2s_min=T2s_min, T2s_max=T2s_max)
+        S0, t2s, SSE, mask_bad_staticFit = make_static_maps_opt(SME_mean,tes,Ncpus,So_init=So_init,T2s_init=T2s_init,So_min=So_min,So_max=So_max,T2s_min=T2s_min, T2s_max=T2s_max)
        
         mask_bad_staticFit = np.logical_not(mask_bad_staticFit)
         niiwrite_nv(S0                ,mask,stFit_S0_path, mepi_aff ,mepi_head)

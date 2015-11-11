@@ -232,8 +232,8 @@ if __name__=='__main__':
         else: 
            print " +              Computing QA metrics from data."
            QA_SSE,QA_SSE_Rank=meb.computeQA(SME,tes,Ncpu,data_mean=SME_mean)
-           meb.niiwrite_nv(QA_SSE_Rank, mask, QA_SSE_rank_path, mepi_aff ,mepi_head)
-           meb.niiwrite_nv(QA_SSE,      mask, QA_SSE_path     , mepi_aff ,mepi_head)
+           #meb.niiwrite_nv(QA_SSE_Rank, mask, QA_SSE_rank_path, mepi_aff ,mepi_head)
+           #meb.niiwrite_nv(QA_SSE,      mask, QA_SSE_path     , mepi_aff ,mepi_head)
         
     # Compute static S0 and R2* maps
     # ------------------------------
