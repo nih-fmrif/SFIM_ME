@@ -113,7 +113,7 @@ One way to explore the output of this program is:
 
 # === FUNCTION: dep_check
 def dep_check():
-    print "++ INFO [Main]: Checking for dependencies...."
+    print("++ INFO [Main]: Checking for dependencies....")
     fails                = 0
     modules = set(["numpy","argparse","scipy","sklearn","multiprocessing","nibabel"])
     
@@ -122,13 +122,13 @@ def dep_check():
             __import__(m)
         except ImportError:
             fails += 1
-            print "++ ERROR [Main]: Can't import Module %s. Please install." % m
+            print("++ ERROR [Main]: Can't import Module %s. Please install." % m)
                 
     if fails == 0:
-        print " +              All Dependencies are OK."
+        print(" +              All Dependencies are OK.")
     else:
-        print " +               All dependencies not available. Please install according to above error messages."
-        print " +               Program exited."
+        print(" +               All dependencies not available. Please install according to above error messages.")
+        print(" +               Program exited.")
         sys.exit()
         
 # === FUNCTION: niiLoad
@@ -213,7 +213,7 @@ def niiwrite_nv(data,mask,temp_path,aff,temp_header):
 
         outni      = nib.Nifti1Image(temp,aff,header=temp_header)
         outni.to_filename(temp_path)
-        print " +              Dataset %s written to disk" % (temp_path)
+        print(" +              Dataset %s written to disk" % (temp_path))
 
 # === FUNCTION: linearFit
 def linearFit_perVoxel(item):
@@ -331,7 +331,7 @@ def computeQA(data,tes,Ncpus,data_mean=None):
     rankSSE         = 100.*rankdata(1./SSE)/Nv
     
     Npoly = np.int(10)
-    print "++ INFO: Generating legendre polynomials of order [%i]." % Npoly
+    print("++ INFO: Generating legendre polynomials of order [%i]." % Npoly)
     x = np.linspace(-1,1-2/Nt,Nt)
     drift = np.zeros((Nt, Npoly))
     for n in range(Npoly):
@@ -391,9 +391,9 @@ def make_static_maps_opt(data_mean,tes,Ncpus,So_init=2500,T2s_init=40,So_min=100
    SSE:       Sum of Squared Errors (Nv,)
    BadFits:   Voxels marked as bad fits by the optimizer (Nv,)
    """
-   print " + INFO [make_static_maps_opt]: Initial conditions [So=%i, T2s=%i]" % (So_init, T2s_init)
-   print " + INFO [make_static_maps_opt]: Bounds So=[%i,%i] & T2s=[%i,%i]" % (So_min, So_max, T2s_min, T2s_max)
-   print " + INFO [make_static_maps_opt]: Optimizer = %s" % Optimizer
+   print(" + INFO [make_static_maps_opt]: Initial conditions [So=%i, T2s=%i]" % (So_init, T2s_init))
+   print(" + INFO [make_static_maps_opt]: Bounds So=[%i,%i] & T2s=[%i,%i]" % (So_min, So_max, T2s_min, T2s_max))
+   print(" + INFO [make_static_maps_opt]: Optimizer = %s" % Optimizer)
    
    Nv,Ne    = data_mean.shape
    S0       = np.zeros(Nv,)
@@ -401,7 +401,7 @@ def make_static_maps_opt(data_mean,tes,Ncpus,So_init=2500,T2s_init=40,So_min=100
    badFits  = np.zeros(Nv,)
    fiterror = np.zeros(Nv,)
 
-   print " +              Multi-process Static Map Fit -> Ncpus = %d" % Ncpus
+   print(" +              Multi-process Static Map Fit -> Ncpus = %d" % Ncpus)
    pool   = Pool(processes=Ncpus)
    result = pool.map(make_static_opt_perVoxel, [{'data_mean':data_mean[v,:],'tes':tes,'So_init':So_init,'So_max':So_max,'So_min':So_min,'T2s_init':T2s_init,'T2s_max':T2s_max,'T2s_min':T2s_min,'Optimizer':Optimizer} for v in np.arange(Nv)]) 
    for v in np.arange(Nv):
@@ -409,7 +409,7 @@ def make_static_maps_opt(data_mean,tes,Ncpus,So_init=2500,T2s_init=40,So_min=100
      t2s[v] = result[v]['v_t2s']
      fiterror[v] = result[v]['v_fiterror']
      badFits[v]  = result[v]['v_badFit']
-   print " + INFO [make_static_maps_opt]: Number of Voxels with errors: %i" % badFits.sum()
+   print(" + INFO [make_static_maps_opt]: Number of Voxels with errors: %i" % badFits.sum())
    return S0, t2s, fiterror, badFits
 
 # =================================================================================================================
@@ -417,9 +417,9 @@ def make_static_maps_opt(data_mean,tes,Ncpus,So_init=2500,T2s_init=40,So_min=100
 # =================================================================================================================
 
 if __name__=='__main__':
-    print "------------------------------------"
-    print "-- SFIM ME-QA version %s         --" % __version__
-    print "------------------------------------"
+    print("------------------------------------")
+    print("-- SFIM ME-QA version %s         --" % __version__)
+    print("------------------------------------")
     dep_check()
     import numpy              as np
     import nibabel            as nib
@@ -467,30 +467,30 @@ if __name__=='__main__':
             Ncpus = int(cpu_count()/2)
         else:
             Ncpus = int(options.Ncpus) 
-    print "++ INFO [Main]: Number of CPUs to use: %d" % (Ncpus)
+    print("++ INFO [Main]: Number of CPUs to use: %d" % (Ncpus))
     
     # Control all necessary inputs are available
     # ------------------------------------------
     if options.tes is None and options.tes_file is None:
-        print "++ Error: No information about echo times provided. Please do so via --TEs or --tes_file"
+        print("++ Error: No information about echo times provided. Please do so via --TEs or --tes_file")
         sys.exit()
     if (not (options.tes is None)) and (not (options.tes_file is None)):
-        print "++ Error: Echo times provided in two different ways (--TEs and --tes_file). Please select only one input mode."
+        print("++ Error: Echo times provided in two different ways (--TEs and --tes_file). Please select only one input mode.")
         sys.exit()
     if options.data_file is None:
-        print "++ Error: No ME input dataset provided. Please provide one using the -d or --orig_data parameter."
+        print("++ Error: No ME input dataset provided. Please provide one using the -d or --orig_data parameter.")
         sys.exit()
     
     # Control for existence of files and directories
     # ----------------------------------------------
     if not os.path.exists(options.data_file):
-        print "++ Error: Datafile [%s] does not exists." % options.data_file
+        print("++ Error: Datafile [%s] does not exists." % options.data_file)
         sys.exit()
     if options.tes_file!=None and (not os.path.exists(options.tes_file)):
-        print "++ Error: Echo Times file [%s] does not exists." % options.tes_file
+        print("++ Error: Echo Times file [%s] does not exists." % options.tes_file)
         sys.exit()
     if (not os.path.exists(options.out_dir)) or (not os.path.isdir(options.out_dir)):
-        print "++ Error: Output directory [%s] does not exists." % options.out_dir
+        print("++ Error: Output directory [%s] does not exists." % options.out_dir)
     
     # Set all output paths
     # --------------------
@@ -503,49 +503,49 @@ if __name__=='__main__':
     # Load echo times information
     # ---------------------------
     if options.tes!=None:
-        print "++ INFO [Main]: Reading echo times from input parameters."
+        print("++ INFO [Main]: Reading echo times from input parameters.")
         tes      = np.fromstring(options.tes,sep=',',dtype=np.float32)
     if options.tes_file!=None:
-        print "++ INFO [Main]: Reading echo times from input echo time file."
+        print("++ INFO [Main]: Reading echo times from input echo time file.")
         tes         = np.loadtxt(options.tes_file,delimiter=',')
     Ne = tes.shape[0]
-    print " +              Echo times: %s" % (str(tes))
+    print(" +              Echo times: %s" % (str(tes)))
     
     # Load ME-EPI data
     # ----------------
-    print "++ INFO [Main]: Loading ME dataset...."
+    print("++ INFO [Main]: Loading ME dataset....")
     mepi_data,mepi_aff,mepi_head  = niiLoad(options.data_file)
     Nx,Ny,Nz,Nt                   = mepi_data.shape
     Nz                            = Nz/Ne # Because the input was the Z-concatenated dataset
     mepi_data                     = mepi_data.reshape((Nx,Ny,Nz,Ne,Nt),order='F')
-    print " +              Dataset dimensions: [Nx=%i,Ny=%i,Nz=%i,Ne=%i,Nt=%i]" % (Nx,Ny,Nz,Ne,Nt)
+    print(" +              Dataset dimensions: [Nx=%i,Ny=%i,Nz=%i,Ne=%i,Nt=%i]" % (Nx,Ny,Nz,Ne,Nt))
     
     # =================================================================================================================
     # =================================        ORIGINAL MASK / RESHAPE          =======================================
     # =================================================================================================================
     origMask_path   = os.path.join(outputDir,options.prefix+'.mask.orig.nii')     
     if options.mask_file==None:
-        print "++ INFO [Main]: Generating initial mask from data." 
+        print("++ INFO [Main]: Generating initial mask from data.")
         mask           = mask4MEdata(mepi_data)
         if options.debug:
             niiwrite_nv(mask[mask],mask,options.out_dir+options.prefix+'.mask.orig.nii',mepi_aff ,mepi_head)
     else:
-        print "++ INFO [Main]: Using user-provided mask."
+        print("++ INFO [Main]: Using user-provided mask.")
         if not os.path.exists(options.data_file):
-            print "++ Error: Provided mask [%s] does not exists." % options.mask_file
+            print("++ Error: Provided mask [%s] does not exists." % options.mask_file)
             sys.exit()
         mask,_,_       = niiLoad(options.mask_file)
         mask = (mask>0)
         
     Nv             = np.sum(mask)
-    print " +              Number of Voxels in mask [Nv=%i]" % Nv
+    print(" +              Number of Voxels in mask [Nv=%i]" % Nv)
     # Put the data into a 3Dx format (Nvoxels, Nechoes, Ndatapoints)
     SME      = mepi_data[mask,:,:].astype(float) #(Nv,Ne,Nt)
     
     # =================================================================================================================
     # =================================        COMPUTE MEAN ACROSS TIME         =======================================
     # =================================================================================================================
-    print "++ INFO [Main]: Computing Mean across time for all echoes...."  
+    print("++ INFO [Main]: Computing Mean across time for all echoes....")
     # There are two options here:
     #   (1) Simply use the mean command.
     #       Smean_case01 = SME.mean(axis=-1)
@@ -558,7 +558,7 @@ if __name__=='__main__':
     # =================================                PERFORM QA               =======================================
     # =================================================================================================================
     
-    print "++ INFO [Main]: Quality Assurance...."        
+    print("++ INFO [Main]: Quality Assurance....")
     QA_SSE_path                   = os.path.join(outputDir,options.prefix+'.QAC.SSE.nii')
     QA_SSE_rank_path              = os.path.join(outputDir,options.prefix+'.QAC.SSE_rank.nii')
     QA_Residual_path              = os.path.join(outputDir,options.prefix+'.QAC.Residual.nii')
@@ -566,7 +566,7 @@ if __name__=='__main__':
     QA_ResidualFit_stdv_path      = os.path.join(outputDir,options.prefix+'.QAC.ResidualFit_stdv.nii')
     QA_MEQAnorm_path              = os.path.join(outputDir,options.prefix+'.QAC.MEQAnorm.nii')
 
-    print " +              Computing QA metrics from data."
+    print(" +              Computing QA metrics from data.")
     QA_SSE,QA_SSE_Rank,QA_Residual, QA_ResidualFit, QA_ResidualFit_stdv, QA_MEQAnorm = computeQA(SME,tes,Ncpus,data_mean=SME_mean)
     if options.debug:
         niiwrite_nv(QA_SSE_Rank,         mask, QA_SSE_rank_path, mepi_aff ,mepi_head)
@@ -580,7 +580,7 @@ if __name__=='__main__':
     # =================================                STATIC FIT               =======================================
     # =================================================================================================================
     if options.do_static_fit:
-        print "++ INFO [Main]: Static T2* and S0 maps requested..."
+        print("++ INFO [Main]: Static T2* and S0 maps requested...")
         stFit_S0_path  = os.path.join(outputDir,options.prefix+'.sTE.S0.nii')
         stFit_t2s_path = os.path.join(outputDir,options.prefix+'.sTE.t2s.nii')
         stFit_SSE_path = os.path.join(outputDir,options.prefix+'.sTE.SSE.nii')

@@ -9,7 +9,7 @@ import sys
 import os
 
 path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../melib'))
-print "++ INFO [Main]: Using meBasic library located in: %s" % path
+print("++ INFO [Main]: Using meBasic library located in: %s" % path)
 if not path in sys.path:
     sys.path.insert(1, path)
 del path
@@ -42,58 +42,58 @@ Nbins= int(options.Nbins)
 
 # Check that all necessary options were provided
 if options.pdir is None:
-        print "++ ERROR: No path for ICA maps png files provided. Program will exit."
-        sys.exit() 
+    print("++ ERROR: No path for ICA maps png files provided. Program will exit.")
+    sys.exit() 
 if options.dir is None:
-	print "++ ERROR: No working directory provided. Program will exit."
-	sys.exit()
+    print("++ ERROR: No working directory provided. Program will exit.")
+    sys.exit()
 if options.runID is None:
-	print "++ ERROR: No run ID provided. Program will exit."
-	sys.exit()
+    print("++ ERROR: No run ID provided. Program will exit.")
+    sys.exit()
 # Check if working directory exits
 if not os.path.isdir(options.pdir):
-	print "++ ERROR: ICA map directory [%s] does not exist." % options.pdir
-	print "++ ERROR: Exiting program now."
-	sys.exit()
-	
+    print("++ ERROR: ICA map directory [%s] does not exist." % options.pdir)
+    print("++ ERROR: Exiting program now.")
+    sys.exit()
+    
 if not os.path.isdir(options.dir):
-	print "++ ERROR: Working directory [%s] does not exist." % options.dir
-	print "++ ERROR: Exiting program now."
-	sys.exit()
+    print("++ ERROR: Working directory [%s] does not exist." % options.dir)
+    print("++ ERROR: Exiting program now.")
+    sys.exit()
 
 # If directory exits, check all necessary files are available.
 if not os.path.exists(options.dir+'comp_table.txt'):
-	print "++ ERROR: Component Table [%s] does not exists." % (options.dir+'comp_table.txt')
-	print "++ ERROR: Exiting program now."
-	sys.exit()
+    print("++ ERROR: Component Table [%s] does not exists." % (options.dir+'comp_table.txt'))
+    print("++ ERROR: Exiting program now.")
+    sys.exit()
 if not os.path.exists(options.dir+'accepted.txt'):
-	print "++ ERROR: List of Accepted Components [%s] does not exists." % (options.dir+'accepted.txt')
-	print "++ ERROR: Exiting program now."
-	sys.exit()
+    print("++ ERROR: List of Accepted Components [%s] does not exists." % (options.dir+'accepted.txt'))
+    print("++ ERROR: Exiting program now.")
+    sys.exit()
 if not os.path.exists(options.dir+'meica_mix.1D'):
-	print "++ ERROR: Component Timeseries File [%s] does not exists." % (options.dir+'meica_mix.1D')
-	print "++ ERROR: Exiting program now."
-	sys.exit()
+    print("++ ERROR: Component Timeseries File [%s] does not exists." % (options.dir+'meica_mix.1D'))
+    print("++ ERROR: Exiting program now.")
+    sys.exit()
 if not os.path.exists(options.dir+options.runID+'.chComp.FR2.nii'):
-	print "++ ERROR: Per Component F_R2 Maps [%s] missing." % (options.dir+options.runID+'.chComp.FR2.nii')
-	print "++ ERROR: Exiting program now."
-	sys.exit()
+    print("++ ERROR: Per Component F_R2 Maps [%s] missing." % (options.dir+options.runID+'.chComp.FR2.nii'))
+    print("++ ERROR: Exiting program now.")
+    sys.exit()
 if not os.path.exists(options.dir+options.runID+'.chComp.FS0.nii'):
-	print "++ ERROR: Per Component F_S0 Maps [%s] missing." % (options.dir+options.runID+'.chComp.FS0.nii')
-	print "++ ERROR: Exiting program now."
-	sys.exit()
+    print("++ ERROR: Per Component F_S0 Maps [%s] missing." % (options.dir+options.runID+'.chComp.FS0.nii'))
+    print("++ ERROR: Exiting program now.")
+    sys.exit()
 if not os.path.exists(options.dir+options.runID+'.chComp.Kappa_mask.nii'):
-	print "++ ERROR: Per Component Kappa Masks [%s] missing." % (options.dir+options.runID+'.chComp.Kappa_mask.nii')
-	print "++ ERROR: Exiting program now."
-	sys.exit()
+    print("++ ERROR: Per Component Kappa Masks [%s] missing." % (options.dir+options.runID+'.chComp.Kappa_mask.nii'))
+    print("++ ERROR: Exiting program now.")
+    sys.exit()
 
 
 meicaDir    = os.path.abspath(options.dir)
 ICAmap_dir  = os.path.abspath(options.pdir)
 Program_dir = os.path.dirname(__file__)
-print "++ INFO [Main]: ME-ICA Output Directory is %s" % meicaDir
-print "++ INFO [Main]: Path to PNG ICA files is %s" % ICAmap_dir
-print "++ INFO [Main]: Number of bins for histograms %d" % Nbins
+print("++ INFO [Main]: ME-ICA Output Directory is %s" % meicaDir)
+print("++ INFO [Main]: Path to PNG ICA files is %s" % ICAmap_dir)
+print("++ INFO [Main]: Number of bins for histograms %d" % Nbins)
 # Load Inputs into memory
 # =======================
 
@@ -104,39 +104,39 @@ comp_ffts           = np.loadtxt(os.path.join(meicaDir,'meica_mix_fft.1D'))
 freq_axis           = np.loadtxt(os.path.join(meicaDir,'meica_mix_fft_freqs.1D'))
 
 FR2_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.FR2.nii')
-print "++ INFO [Main]: FR2 Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.FR2.nii',FR2_maps.shape)
+print("++ INFO [Main]: FR2 Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.FR2.nii',FR2_maps.shape))
 cR2_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.cR2.nii')
-print "++ INFO [Main]: FR2 Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.cR2.nii',cR2_maps.shape)
+print("++ INFO [Main]: FR2 Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.cR2.nii',cR2_maps.shape))
 FS0_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.FS0.nii')
-print "++ INFO [Main]: FS0 Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.FS0.nii',FS0_maps.shape)
+print("++ INFO [Main]: FS0 Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.FS0.nii',FS0_maps.shape))
 cS0_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.cS0.nii')
-print "++ INFO [Main]: FS0 Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.cS0.nii',cS0_maps.shape)
+print("++ INFO [Main]: FS0 Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.cS0.nii',cS0_maps.shape))
 KM_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.Kappa_mask.nii'); KM_maps=(KM_maps>0);
-print "++ INFO [Main]: Kappa Masks [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.Kappa_mask.nii',KM_maps.shape)
+print("++ INFO [Main]: Kappa Masks [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.Kappa_mask.nii',KM_maps.shape))
 RM_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.Rho_mask.nii'); RM_maps=(RM_maps>0);
-print "++ INFO [Main]: Rho Masks [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.Rho_mask.nii',RM_maps.shape)
+print("++ INFO [Main]: Rho Masks [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.Rho_mask.nii',RM_maps.shape))
 Kappa_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.Kappa.nii')
-print "++ INFO [Main]: Kappa Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.Kappa.nii',Kappa_maps.shape)
+print("++ INFO [Main]: Kappa Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.Kappa.nii',Kappa_maps.shape))
 Rho_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.Rho.nii')
-print "++ INFO [Main]: Rho Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.Rho.nii',Rho_maps.shape)
+print("++ INFO [Main]: Rho Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.Rho.nii',Rho_maps.shape))
 ICA_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.ICA.Zmaps.nii')
-print "++ INFO [Main]: ICA Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.ICA.Zmaps.nii',ICA_maps.shape)
+print("++ INFO [Main]: ICA Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.ICA.Zmaps.nii',ICA_maps.shape))
 ICAM_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.ICA.Zmaps.mask.nii'); ICAM_maps=(ICAM_maps>0);
-print "++ INFO [Main]: ICA Masks [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.ICA.Zmaps.mask.nii',ICAM_maps.shape)
+print("++ INFO [Main]: ICA Masks [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.ICA.Zmaps.mask.nii',ICAM_maps.shape))
 mask_orig,_,_ = meb.niiLoad(options.dir+options.runID+'.mask.orig.nii'); mask_orig = (mask_orig>0);
-print "++ INFO [Main]: Original Mask [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.mask.orig.nii',mask_orig.shape)
+print("++ INFO [Main]: Original Mask [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.mask.orig.nii',mask_orig.shape))
 Wgth_maps,_,_ = meb.niiLoad(options.dir+options.runID+'.chComp.weightMaps.nii')
-print "++ INFO [Main]: Weight Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.weightMaps.nii',Wgth_maps.shape)
+print("++ INFO [Main]: Weight Maps [%s] loaded successfully. [%s]" % (options.dir+options.runID+'.chComp.weightMaps.nii',Wgth_maps.shape))
 
 Nt, Nc              = comp_timeseries.shape
 fica_psel           = np.zeros((Nc,))
 fica_psel[accepted_components] = 1
 
 ICAmap_default_path = os.path.join(Program_dir,'AxSag_Component_XX.png')
-print ICAmap_default_path
+print(ICAmap_default_path)
 ICAmap_paths        = glob(str(os.path.join(ICAmap_dir,'AxSag*.png')))
 
-print  "++ INFO: Number of ICA Maps: %d" % len(ICAmap_paths)
+print( "++ INFO: Number of ICA Maps: %d" % len(ICAmap_paths))
 
 # Setting up output file
 # ======================
@@ -358,7 +358,7 @@ for c in range(Nc):
     FR2_Ledges[c,:]    = aux[:-1]
     FR2_Redges[c,:]    = aux[1:]
     _,_,Nz         = aux_FR2.shape
-    print Nz
+    print(Nz)
     
     aux_cR2       = np.squeeze(cR2_maps[:,:,:,c])
     aux_input     = aux_cR2[aux_mask_Kappa]
@@ -408,7 +408,7 @@ for c in range(Nc):
     
     #Weight Maps
     _,_,Nzz = aux_mask_ICA.shape
-    print Nzz
+    print(Nzz)
     if ~(Nzz==Nz):
         aux_mask_ICA = aux_mask_ICA[:,:,np.arange(Nz)]
     aux_Wgth   = np.squeeze(Wgth_maps[:,:,:,c])

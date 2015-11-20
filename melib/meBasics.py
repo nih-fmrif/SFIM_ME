@@ -116,83 +116,83 @@ def getMeanByPolyFit(data,polort=4):
    return mean
 
 def niiwrite_nv(data,mask,temp_path,aff,temp_header):
-	"""
-	This function will write NIFTI datasets
+    """
+    This function will write NIFTI datasets
 
-	Parameters:
-	----------
-	data: this is (Nv, Nt) or (Nv,) array. No z-cat ME datasets allowed.
-	mask: this is (Nx,Ny,Nz) array with Nv entries equal to True. This is an intracranial voxel mask.
-	temp_path: this is the output directory.
-	aff: affine transformation associated with this dataset.
-	temp_header: header for the dataset.  
-	
-	Returns:
-	--------
-	None.
-	"""
-	Nx,Ny,Nz   = mask.shape
-	if (data.ndim ==1):
-		temp       = np.zeros((Nx,Ny,Nz),order='F')
-		temp[mask] = data
-	if (data.ndim ==2):
-			_,Nt = data.shape
-			temp         = np.zeros((Nx,Ny,Nz,Nt),order='F')
-			temp[mask,:] = data
-	if (data.ndim ==3):
-			Nv, Ne, Nt   = data.shape
-			temp         = np.zeros((Nx,Ny,Nz,Nt),order='F')
-			temp[mask,:] = data[:,0,:]
-			for e in range(1,Ne):
-				aux       = np.zeros((Nx,Ny,Nz,Nt),order='F')
-				aux[mask,:] = data[:,e,:]
-				temp = np.concatenate((temp,aux),axis=2)
+    Parameters:
+    ----------
+    data: this is (Nv, Nt) or (Nv,) array. No z-cat ME datasets allowed.
+    mask: this is (Nx,Ny,Nz) array with Nv entries equal to True. This is an intracranial voxel mask.
+    temp_path: this is the output directory.
+    aff: affine transformation associated with this dataset.
+    temp_header: header for the dataset.  
+    
+    Returns:
+    --------
+    None.
+    """
+    Nx,Ny,Nz   = mask.shape
+    if (data.ndim ==1):
+        temp       = np.zeros((Nx,Ny,Nz),order='F')
+        temp[mask] = data
+    if (data.ndim ==2):
+            _,Nt = data.shape
+            temp         = np.zeros((Nx,Ny,Nz,Nt),order='F')
+            temp[mask,:] = data
+    if (data.ndim ==3):
+            Nv, Ne, Nt   = data.shape
+            temp         = np.zeros((Nx,Ny,Nz,Nt),order='F')
+            temp[mask,:] = data[:,0,:]
+            for e in range(1,Ne):
+                aux       = np.zeros((Nx,Ny,Nz,Nt),order='F')
+                aux[mask,:] = data[:,e,:]
+                temp = np.concatenate((temp,aux),axis=2)
 
-	outni      = nib.Nifti1Image(temp,aff,header=temp_header)
-	outni.to_filename(temp_path)
-	print " +              Dataset %s written to disk" % (temp_path)
+    outni      = nib.Nifti1Image(temp,aff,header=temp_header)
+    outni.to_filename(temp_path)
+    print(" +              Dataset %s written to disk" % (temp_path))
 
 def make_optcom(data,t2s,tes):
-	"""
-	Generates the optimally combined time series. 
+    """
+    Generates the optimally combined time series. 
 
-	Parameters:
-	-----------
-	data: this is the original ME dataset with the mean in a (Nv,Ne,Nt) array.
-	t2s:  this is the static T2s map in a (Nv,) array.
-	tes:  echo times in a (Ne,) array.
+    Parameters:
+    -----------
+    data: this is the original ME dataset with the mean in a (Nv,Ne,Nt) array.
+    t2s:  this is the static T2s map in a (Nv,) array.
+    tes:  echo times in a (Ne,) array.
 
-	Returns:
-	--------
-	octs: optimally combined time series in a (Nv,Nt) array.	
-	"""
-	Nv,Ne,Nt = data.shape
-	ft2s  = t2s[:,np.newaxis]
-	alpha = tes * np.exp(-tes /ft2s)
-	alpha = np.tile(alpha[:,:,np.newaxis],(1,1,Nt))
-	octs  = np.average(data,axis = 1,weights=alpha)
-	return octs
+    Returns:
+    --------
+    octs: optimally combined time series in a (Nv,Nt) array.    
+    """
+    Nv,Ne,Nt = data.shape
+    ft2s  = t2s[:,np.newaxis]
+    alpha = tes * np.exp(-tes /ft2s)
+    alpha = np.tile(alpha[:,:,np.newaxis],(1,1,Nt))
+    octs  = np.average(data,axis = 1,weights=alpha)
+    return octs
 
 def mask4MEdata(data):
-	"""
-	This function will create a mask for ME data taking into
-  	account the time series of all echoes
-	
-	Paramters:
-	----------
-	data: this is a (Nx,Ny,Nz,Ne,Nt) array with ME data.
+    """
+    This function will create a mask for ME data taking into
+      account the time series of all echoes
+    
+    Paramters:
+    ----------
+    data: this is a (Nx,Ny,Nz,Ne,Nt) array with ME data.
 
-	Returns:
-	--------
-	mask: this is a (Nx,Ny,Nz) marking all voxels that have valid time-series for all echo times.
-	"""
-	# Create mask taking into account all echoes
-	Nx,Ny,Nz,Ne,Nt = data.shape
-	mask           = np.ones((Nx,Ny,Nz),dtype=np.bool)
-	for i in range(Ne):
-		tmpmask = (data[:,:,:,i,:] != 0).prod(axis=-1,dtype=np.bool)
-		mask    = mask & tmpmask
-	return mask
+    Returns:
+    --------
+    mask: this is a (Nx,Ny,Nz) marking all voxels that have valid time-series for all echo times.
+    """
+    # Create mask taking into account all echoes
+    Nx,Ny,Nz,Ne,Nt = data.shape
+    mask           = np.ones((Nx,Ny,Nz),dtype=np.bool)
+    for i in range(Ne):
+        tmpmask = (data[:,:,:,i,:] != 0).prod(axis=-1,dtype=np.bool)
+        mask    = mask & tmpmask
+    return mask
 
 def linearFit_perVoxel(item):
   Ne     = item['Ne']
@@ -219,44 +219,44 @@ def linearFit_perVoxel(item):
   return {'dkappa':dkappa,'drho':drho, 'fit_residual':fit_residual,'rcond':rcond,'datahat':datahat,'datahat2':datahat2}
 
 def linearFit(data, tes,Ncpu, dataMean=None):
-	"""
-	This function will compute the fit of ME data using a least square approach
-	(although not sure why this is not based on the log)
+    """
+    This function will compute the fit of ME data using a least square approach
+    (although not sure why this is not based on the log)
 
-	Parameters:
-	-----------
-	data: ME dataset masked. This is a (Nv,Ne,Nt) numpy array
-	tes: numpy array with the echo times used during acquisition.
+    Parameters:
+    -----------
+    data: ME dataset masked. This is a (Nv,Ne,Nt) numpy array
+    tes: numpy array with the echo times used during acquisition.
 
-	Returns:
-	-------
-	dkappa: Time series of TE dependent fluctuations.
-	drho:   Time series of non-TE dependent fluctuations.
-	fit_residual: voxel-wise and time point wise residuals
-	rcond:         condition number for each voxel.
-	datahat: Estimate of the data after fitting
+    Returns:
+    -------
+    dkappa: Time series of TE dependent fluctuations.
+    drho:   Time series of non-TE dependent fluctuations.
+    fit_residual: voxel-wise and time point wise residuals
+    rcond:         condition number for each voxel.
+    datahat: Estimate of the data after fitting
    datahat2: Estimate of the data after fitting and removing S0 changes
-	"""
-	Nv,Ne,Nt     = data.shape
-	rcond        = np.zeros((Nv,))
-	drho         = np.zeros((Nv,Nt))
-	dkappa       = np.zeros((Nv,Nt))
-	fit_residual = np.zeros((Nv,Nt))
-	datahat      = np.zeros((Nv,Ne,Nt))
-	datahat2     = np.zeros((Nv,Ne,Nt))
-	if dataMean is  None:
-		dataMean     = data.mean(axis=2)
-	pool   = Pool(processes=Ncpu)
-	result = pool.map(linearFit_perVoxel, [{'DeltaS':data[v,:,:] - np.tile(dataMean[v,:].reshape((Ne,1)),Nt),'Smean':dataMean[v,:],'tes':tes,'Ne':int(Ne),'Nt':int(Nt)} for v in np.arange(Nv)]) 
+    """
+    Nv,Ne,Nt     = data.shape
+    rcond        = np.zeros((Nv,))
+    drho         = np.zeros((Nv,Nt))
+    dkappa       = np.zeros((Nv,Nt))
+    fit_residual = np.zeros((Nv,Nt))
+    datahat      = np.zeros((Nv,Ne,Nt))
+    datahat2     = np.zeros((Nv,Ne,Nt))
+    if dataMean is  None:
+        dataMean     = data.mean(axis=2)
+    pool   = Pool(processes=Ncpu)
+    result = pool.map(linearFit_perVoxel, [{'DeltaS':data[v,:,:] - np.tile(dataMean[v,:].reshape((Ne,1)),Nt),'Smean':dataMean[v,:],'tes':tes,'Ne':int(Ne),'Nt':int(Nt)} for v in np.arange(Nv)]) 
     
-	for v in range(Nv):
-		rcond[v]          = result[v]['rcond'] 
-		drho[v,:]         = result[v]['drho'] 
-		dkappa[v,:]       = result[v]['dkappa'] 
-		fit_residual[v,:] = result[v]['fit_residual'] 
-		datahat[v,:,:]    = result[v]['datahat'] 
-		datahat2[v,:,:]   = result[v]['datahat2'] 
-	return dkappa,drho,fit_residual,rcond,datahat,datahat2
+    for v in range(Nv):
+        rcond[v]          = result[v]['rcond'] 
+        drho[v,:]         = result[v]['drho'] 
+        dkappa[v,:]       = result[v]['dkappa'] 
+        fit_residual[v,:] = result[v]['fit_residual'] 
+        datahat[v,:,:]    = result[v]['datahat'] 
+        datahat2[v,:,:]   = result[v]['datahat2'] 
+    return dkappa,drho,fit_residual,rcond,datahat,datahat2
 
 def objective(x,Sv,aux_tes):
     return np.sqrt(sum((Sv-(x[0]*np.exp(-aux_tes/x[1])))*(Sv-(x[0]*np.exp(-aux_tes/x[1])))))
@@ -303,9 +303,9 @@ def make_static_maps_opt(data_mean,tes,Ncpu,So_init=2500,T2s_init=40,So_min=100,
    SSE:       Sum of Squared Errors (Nv,)
    BadFits:   Voxels marked as bad fits by the optimizer (Nv,)
    """
-   print " + INFO [make_static_maps_opt]: Initial conditions [So=%i, T2s=%i]" % (So_init, T2s_init)
-   print " + INFO [make_static_maps_opt]: Bounds So=[%i,%i] & T2s=[%i,%i]" % (So_min, So_max, T2s_min, T2s_max)
-   print " + INFO [make_static_maps_opt]: Optimizer = %s" % Optimizer
+   print(" + INFO [make_static_maps_opt]: Initial conditions [So=%i, T2s=%i]" % (So_init, T2s_init))
+   print(" + INFO [make_static_maps_opt]: Bounds So=[%i,%i] & T2s=[%i,%i]" % (So_min, So_max, T2s_min, T2s_max))
+   print(" + INFO [make_static_maps_opt]: Optimizer = %s" % Optimizer)
    
    Nv,Ne    = data_mean.shape
    S0       = np.zeros(Nv,)
@@ -313,7 +313,7 @@ def make_static_maps_opt(data_mean,tes,Ncpu,So_init=2500,T2s_init=40,So_min=100,
    badFits  = np.zeros(Nv,)
    fiterror = np.zeros(Nv,)
 
-   print " +              Multi-process Static Map Fit -> Ncpu = %d" % Ncpu
+   print(" +              Multi-process Static Map Fit -> Ncpu = %d" % Ncpu)
    pool   = Pool(processes=Ncpu)
    result = pool.map(make_static_opt_perVoxel, [{'data_mean':data_mean[v,:],'tes':tes,'So_init':So_init,'So_max':So_max,'So_min':So_min,'T2s_init':T2s_init,'T2s_max':T2s_max,'T2s_min':T2s_min,'Optimizer':Optimizer} for v in np.arange(Nv)]) 
    for v in np.arange(Nv):
@@ -321,7 +321,7 @@ def make_static_maps_opt(data_mean,tes,Ncpu,So_init=2500,T2s_init=40,So_min=100,
      t2s[v] = result[v]['v_t2s']
      fiterror[v] = result[v]['v_fiterror']
      badFits[v]  = result[v]['v_badFit']
-   print " + INFO [make_static_maps_opt]: Number of Voxels with errors: %i" % badFits.sum()
+   print(" + INFO [make_static_maps_opt]: Number of Voxels with errors: %i" % badFits.sum())
    return S0, t2s, fiterror, badFits
 
 def _characterize_this_component(item):
@@ -353,7 +353,7 @@ def _characterize_this_component(item):
     SSE_S0           = ((B-estima_S0)**2).sum(axis=0)  
     dofSSR_S0        = 1
     dofSSE_S0        = Ne -1
-    F_S0             = (SSR_S0/dofSSR_S0) / (SSE_S0/dofSSE_S0)
+    F_S0             = (SSR_S0/dofSSR_S0) / (SSE_S0/dofSSE_S0) #(Nv,)
     p_S0             = 1-f.cdf(F_S0,1,Ne-1)
     F_S0_mask        = (p_S0 < 0.05)
     F_S0[F_S0>F_MAX] = F_MAX
@@ -361,7 +361,7 @@ def _characterize_this_component(item):
     if writeOuts:
         niiwrite_nv((X1*np.tile(coeffs_S0,(Ne,1))).T,mask,outDir+outPrefix+'.chComp.EXTRA.S0Fit'+str(c).zfill(3)+'.nii',aff,head)
     
-    # R2 Model
+   # R2 Model
     # If beta_i = alpha_i*TE/mean(TE) + error --> To solve this RTO model (Regression Through the Origin), it is possible to obtain
     # the alpha_i that provides the best fit (in a least-squares fashion) by simply using the equation below
     # Please look at: Eishenhouer JG "Regression throught the origin" Technical Statistics (25):3, 2003 
@@ -371,44 +371,42 @@ def _characterize_this_component(item):
     SSE_R2           = ((B-estima_R2)**2).sum(axis=0)  
     dofSSR_R2        = 1
     dofSSE_R2        = Ne -1
-    F_R2             = (SSR_R2/dofSSR_R2) / (SSE_R2/dofSSE_R2)
+    F_R2             = (SSR_R2/dofSSR_R2) / (SSE_R2/dofSSE_R2) #(Nv,)
     p_R2             = 1-f.cdf(F_R2,1,Ne-1)
     F_R2_mask        = (p_R2 < 0.05)
     F_R2[F_R2>F_MAX] = F_MAX
     F_R2_AllValues   = F_R2.copy()
+    
     if writeOuts:
         niiwrite_nv((X2*np.tile(coeffs_R2,(Ne,1))).T,mask,outDir+outPrefix+'.chComp.EXTRA.R2Fit'+str(c).zfill(3)+'.nii',aff,head)
     
-    #Kappa_mask  = np.logical_and(c_mask,F_R2_mask)
-    #Rho_mask    = np.logical_and(c_mask,F_S0_mask)
+    # Mask for spatial averaging
+    Kappa_mask   = np.logical_and(c_mask, np.logical_or(F_R2_mask, F_S0_mask)) #(Nv,)
+    Rho_mask     = Kappa_mask.copy() #(Nv,)
     
-    Kappa_mask   = np.logical_and(c_mask, np.logical_or(F_R2_mask, F_S0_mask))
-    Rho_mask     = Kappa_mask.copy()
+    Kappa_map  = F_R2 * weight_map
+    Kappa_map  = Kappa_map/(weight_map[Kappa_mask].mean())
+    Kappa_map  = Kappa_map * Kappa_mask           # weigths from the voxels entering the computation
+    if doMedian:
+        Kappa = np.median(Kappa_map[Kappa_mask])
+    else:
+        Kappa = np.mean(Kappa_map[Kappa_mask])
     
-    # Kappa Computation
-    Kappa_map         = F_R2 * weight_map 
-    Kappa_mask_arr   = ma.masked_array(Kappa_map,  mask=np.logical_not(Kappa_mask))    # NOTE: This use of the masked array has been manually validated
-    KappW_mask_arr   = ma.masked_array(weight_map, mask=np.logical_not(Kappa_mask))    # NOTE: This use of the masked array has been manually validated
-    Kappa            = Kappa_mask_arr.mean() / KappW_mask_arr.mean()   # NOTE: This use of the masked array has been manually validated
-    
-    Kappa_map        = Kappa_map / KappW_mask_arr.mean() # This is so that the output Kappa map is properly computed using only the
-    Kappa_map        = Kappa_map * Kappa_mask           # weigths from the voxels entering the computation
-    
-    #Rho Computation
-    Rho_map          = F_S0 * weight_map
-    Rho_mask_arr     = ma.masked_array(Rho_map,    mask=np.logical_not(Rho_mask))      # NOTE: This use of the masked array has been manually validated
-    RhoW_mask_arr    = ma.masked_array(weight_map, mask=np.logical_not(Rho_mask))      # NOTE: This use of the masked array has been manually validated
-    Rho              = Rho_mask_arr.mean() / RhoW_mask_arr.mean()      # NOTE: This use of the masked array has been manually validated
-    
-    Rho_map        = Rho_map / RhoW_mask_arr.mean()      # This is so that the output Rho map is properly computed using only the
-    Rho_map        = Rho_map * Rho_mask                 # weigths from the voxels entering the computation
-    
+    # Rho Computation
+    Rho_map  = F_S0 * weight_map
+    Rho_map  = Rho_map/(weight_map[Rho_mask].mean())
+    Rho_map  = Rho_map * Rho_mask           # weigths from the voxels entering the computation
+    if doMedian:
+        Rho = np.median(Rho_map[Rho_mask])
+    else:
+        Rho = np.mean(Rho_map[Rho_mask])
+
     
     # EXTRA CODE
     if doFM==True:
         FullModel_Slope = np.zeros((Nv,))
         FullModel_Inter = np.zeros((Nv,))
-    	FullModel_p     = np.zeros((Nv,))
+        FullModel_p     = np.zeros((Nv,))
         FullModel_r     = np.zeros((Nv,))
         FullModel_Slope_err = np.zeros((Nv,))
         FullModel_Slope_T   = np.zeros((Nv,))
@@ -509,15 +507,15 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
         FM_Slope_T_map   = np.zeros((Nv,Nc))
         FM_Slope_p_map   = np.zeros((Nv,Nc))
     # Compute metrics per component
-    print "Hello -------------->"
-    print "beta.%s" % str(beta.shape)
-    print "ICA_maps.%s" % str(ICA_maps.shape)
-    print "ICA_maps_mask.%s" % str(ICA_maps_mask.shape)
+    print("Hello -------------->")
+    print("beta.%s" % str(beta.shape))
+    print("ICA_maps.%s" % str(ICA_maps.shape))
+    print("ICA_maps_mask.%s" % str(ICA_maps_mask.shape))
     X1 = np.ones((Ne,Nv)) 
     X2 = np.repeat((tes/tes.mean())[:,np.newaxis].T,Nv,axis=0).T   #<--------------------   MAYBE NEEDS A MINUS SIGN   (Ne,Nv)
-    print "X1.%s" % str(X1.shape)
-    print "X2.%s" % str(X2.shape)
-    print " +              Multi-process Characterize Components -> Ncpu = %d" % Ncpus
+    print("X1.%s" % str(X1.shape))
+    print("X2.%s" % str(X2.shape))
+    print(" +              Multi-process Characterize Components -> Ncpu = %d" % Ncpus)
     pool   = Pool(processes=Ncpus)
     result = pool.map(_characterize_this_component, [{
                 'c':          c,   'F_MAX':F_MAX, 'Z_MAX':Z_MAX,
@@ -584,7 +582,7 @@ def characterize_components(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_maps, 
             aux_numerator = Weight_maps[aux_mask,c].sum()
             aux_denominat = Weight_maps[:,c].sum()
             aux_metric = aux_numerator/aux_denominat
-            print "[%d] -> aux_mask%s | aux_numerator%s | DF=%f" % (c,str(aux_mask.shape),str(Weight_maps[aux_mask,c].shape),aux_metric)
+            print("[%d] -> aux_mask%s | aux_numerator%s | DF=%f" % (c,str(aux_mask.shape),str(Weight_maps[aux_mask,c].shape),aux_metric))
     
     df_feats = pd.DataFrame(data=feat_vals,columns=feat_names)
     df_feats.to_csv(outDir+outPrefix+'.DF.csv')
@@ -700,7 +698,7 @@ def _characterize_this_component_se(item):
     if doFM==True:
         FullModel_Slope = np.zeros((Nv,))
         FullModel_Inter = np.zeros((Nv,))
-    	FullModel_p     = np.zeros((Nv,))
+        FullModel_p     = np.zeros((Nv,))
         FullModel_r     = np.zeros((Nv,))
         FullModel_Slope_err = np.zeros((Nv,))
         FullModel_Slope_T   = np.zeros((Nv,))
@@ -808,7 +806,7 @@ def characterize_components_se(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_map
     # Compute metrics per component
     X1 = np.ones((Ne,Nv)) #(Ne,Nv)
     X2 = np.repeat((tes/tes.mean())[:,np.newaxis].T,Nv,axis=0).T   #<--------------------   MAYBE NEEDS A MINUS SIGN   (Ne,Nv)
-    print " +              Multi-process Characterize Components -> Ncpu = %d" % Ncpus
+    print(" +              Multi-process Characterize Components -> Ncpu = %d" % Ncpus)
     pool   = Pool(processes=Ncpus)
     result = pool.map(_characterize_this_component_se, [{
                 'c':          c,   'F_MAX':F_MAX, 'Z_MAX':Z_MAX,
@@ -875,7 +873,7 @@ def characterize_components_se(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_map
             aux_numerator = Weight_maps[aux_mask,c].sum()
             aux_denominat = Weight_maps[:,c].sum()
             aux_metric = aux_numerator/aux_denominat
-            print "[%d] -> aux_mask%s | aux_numerator%s | DF=%f" % (c,str(aux_mask.shape),str(Weight_maps[aux_mask,c].shape),aux_metric)
+            print("[%d] -> aux_mask%s | aux_numerator%s | DF=%f" % (c,str(aux_mask.shape),str(Weight_maps[aux_mask,c].shape),aux_metric))
     
     df_feats = pd.DataFrame(data=feat_vals,columns=feat_names)
     df_feats.to_csv(outDir+outPrefix+'.DF.csv')
@@ -908,53 +906,53 @@ def characterize_components_se(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_map
     
 
 def niiLoad(path):
-	mepi_dset       = nib.load(path)
-	data            = mepi_dset.get_data()
-	aff             = mepi_dset.get_affine()
-	head            = mepi_dset.get_header()
-	head.extensions = []
-	head.set_sform(head.get_sform(),code=1)
-	return data,aff,head
+    mepi_dset       = nib.load(path)
+    data            = mepi_dset.get_data()
+    aff             = mepi_dset.get_affine()
+    head            = mepi_dset.get_header()
+    head.extensions = []
+    head.set_sform(head.get_sform(),code=1)
+    return data,aff,head
 
 def getSVDThreshold(svd_input,u,s,v,verb=False,SEprogram=False,Ne=None):
-	""" 
-	This function estimates the number of non-noise components in a PCA decomposition
-	The algorithm used is from: Gavish and Donoho 2014 "The optiomal hard threshold for singular values is 4/sqrt(3)"
-	Parameters:
+    """ 
+    This function estimates the number of non-noise components in a PCA decomposition
+    The algorithm used is from: Gavish and Donoho 2014 "The optiomal hard threshold for singular values is 4/sqrt(3)"
+    Parameters:
    -----------
-	svd_input: Input data to the SVD decomposition in an array (Nv.Nt)
-	u:   U matrix from the SVD decomposition
-	s:   Eigen-values from the SVD decomposition
-	v:   VT matrix from the SVD decomposition. 
-		  These three inputs are the outcomes of np.linalg.svd as they come out of that function.
-	verb: If true, the function will print out some metrics about the results.
-		  By default is set to False
+    svd_input: Input data to the SVD decomposition in an array (Nv.Nt)
+    u:   U matrix from the SVD decomposition
+    s:   Eigen-values from the SVD decomposition
+    v:   VT matrix from the SVD decomposition. 
+          These three inputs are the outcomes of np.linalg.svd as they come out of that function.
+    verb: If true, the function will print(out some metrics about the results.)
+          By default is set to False
 
    Results:
    --------
    Nc:  Number of non-gaussian noise components.
-	"""
-	m = svd_input.shape[1]
-	n = svd_input.shape[0]
-	if SEprogram==True and not (Ne is None):
-	    n = n / Ne
-	beta = np.float(m)/np.float(n)
-	omega = 0.56*beta**3 - 0.95*beta**2 + 1.82*beta + 1.43
-	ymed = np.median(s)
-	tau = omega*ymed
-	shat = s * (s>tau)
-	svd_inputhat = np.dot(u,np.dot(np.diag(shat),v))
-	err = svd_input  - svd_inputhat
-	relerr = np.linalg.norm(err,'fro')**2/np.linalg.norm(svd_input,'fro')**2
-	Nc = np.where(shat>0)[0][-1] + 1
-	if verb:
-		print(" +              M = " + str(m) + ", N = " + str(n))
-		print(" +              Beta = " + str(beta) + ", omega = " + str(omega))
-		print(" +              Median y = " + str(ymed) + ", Tau = "+str(tau))
-		print(" +              Number of components = " + str(Nc))
-		print(" +              Signal power: " + str(1.0 - relerr))
-		print(" +              Noise power: " + str(relerr))
-	return Nc
+    """
+    m = svd_input.shape[1]
+    n = svd_input.shape[0]
+    if SEprogram==True and not (Ne is None):
+        n = n / Ne
+    beta = np.float(m)/np.float(n)
+    omega = 0.56*beta**3 - 0.95*beta**2 + 1.82*beta + 1.43
+    ymed = np.median(s)
+    tau = omega*ymed
+    shat = s * (s>tau)
+    svd_inputhat = np.dot(u,np.dot(np.diag(shat),v))
+    err = svd_input  - svd_inputhat
+    relerr = np.linalg.norm(err,'fro')**2/np.linalg.norm(svd_input,'fro')**2
+    Nc = np.where(shat>0)[0][-1] + 1
+    if verb:
+        print(" +              M = " + str(m) + ", N = " + str(n))
+        print(" +              Beta = " + str(beta) + ", omega = " + str(omega))
+        print(" +              Median y = " + str(ymed) + ", Tau = "+str(tau))
+        print(" +              Number of components = " + str(Nc))
+        print(" +              Signal power: " + str(1.0 - relerr))
+        print(" +              Noise power: " + str(relerr))
+    return Nc
 
 def computeQA(data,tes,Ncpu,data_mean=None):
     """

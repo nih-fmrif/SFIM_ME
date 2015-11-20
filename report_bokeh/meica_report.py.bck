@@ -13,7 +13,7 @@ import sys
 import os
 
 path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../melib'))
-print "++ INFO [Main]: Using meBasic library located in: %s" % path
+print("++ INFO [Main]: Using meBasic library located in: %s" % path)
 if not path in sys.path:
     sys.path.insert(1, path)
 del path
@@ -97,7 +97,7 @@ def generateMosaics_Sag(Cmaps_3D,Nstep=5,Nstart=None,Nend=None):
     sagg_sel_slices = np.arange(Nstart,Nend,Nstep,dtype=int)
     Nslices         = sagg_sel_slices.shape[0]
     mosaic = np.zeros((Nc,Nz,Nslices*Ny))
-    print " + INFO [generateMosaic]: Number of slices = %d" % Nslices
+    print(" + INFO [generateMosaic]: Number of slices = %d" % Nslices)
     for c in range(Nc):
         aux_data = np.reshape(Cmaps_3D[sagg_sel_slices,:,::-1,c],(Nslices*Ny,Nz)).T
         aux_max  = scoreatpercentile(aux_data,98)
@@ -118,37 +118,37 @@ options = parser.parse_args()
 
 # Check that all necessary options were provided
 if options.dir is None:
-	print "++ ERROR: No working directory provided. Program will exit."
+	print("++ ERROR: No working directory provided. Program will exit.")
 	sys.exit()
 if options.runID is None:
-	print "++ ERROR: No run ID provided. Program will exit."
+	print("++ ERROR: No run ID provided. Program will exit.")
 	sys.exit()
 # Check if working directory exits
 if not os.path.isdir(options.dir):
-	print "++ ERROR: Working directory [%s] does not exist." % options.dir
-	print "++ ERROR: Exiting program now."
+	print("++ ERROR: Working directory [%s] does not exist." % options.dir)
+	print("++ ERROR: Exiting program now.")
 	sys.exit()
 
 # If directory exits, check all necessary files are available.
 if not os.path.exists(options.dir+'comp_table.txt'):
-	print "++ ERROR: Component Table [%s] does not exists." % (options.dir+'comp_table.txt')
-	print "++ ERROR: Exiting program now."
+	print("++ ERROR: Component Table [%s] does not exists." % (options.dir+'comp_table.txt'))
+	print("++ ERROR: Exiting program now.")
 	sys.exit()
 if not os.path.exists(options.dir+'accepted.txt'):
-	print "++ ERROR: List of Accepted Components [%s] does not exists." % (options.dir+'accepted.txt')
-	print "++ ERROR: Exiting program now."
+	print("++ ERROR: List of Accepted Components [%s] does not exists." % (options.dir+'accepted.txt'))
+	print("++ ERROR: Exiting program now.")
 	sys.exit()
 if not os.path.exists(options.dir+'meica_mix.1D'):
-	print "++ ERROR: Component Timeseries File [%s] does not exists." % (options.dir+'meica_mix.1D')
-	print "++ ERROR: Exiting program now."
+	print("++ ERROR: Component Timeseries File [%s] does not exists." % (options.dir+'meica_mix.1D'))
+	print("++ ERROR: Exiting program now.")
 	sys.exit()
 if not os.path.exists(options.dir+options.runID+'.chComp.FR2.nii'):
-	print "++ ERROR: Per Component F_R2 Maps [%s] missing." % (options.dir+options.runID+'.chComp.FR2.nii')
-	print "++ ERROR: Exiting program now."
+	print("++ ERROR: Per Component F_R2 Maps [%s] missing." % (options.dir+options.runID+'.chComp.FR2.nii'))
+	print("++ ERROR: Exiting program now.")
 	sys.exit()
 if not os.path.exists(options.dir+options.runID+'.chComp.FS0.nii'):
-	print "++ ERROR: Per Component F_S0 Maps [%s] missing." % (options.dir+options.runID+'.chComp.FS0.nii')
-	print "++ ERROR: Exiting program now."
+	print("++ ERROR: Per Component F_S0 Maps [%s] missing." % (options.dir+options.runID+'.chComp.FS0.nii'))
+	print("++ ERROR: Exiting program now.")
 	sys.exit()
 Nstep=8
 Nstart=13
@@ -160,8 +160,8 @@ comp_table          = np.loadtxt(options.dir+'comp_table.txt')
 comp_timeseries     = np.loadtxt(options.dir+'meica_mix.1D')
 comp_ffts           = np.loadtxt(options.dir+'meica_mix_fft.1D')
 freq_axis           = np.loadtxt(options.dir+'meica_mix_fft_freqs.1D')
-print comp_ffts.shape
-print comp_timeseries.shape
+print(comp_ffts.shape)
+print(comp_timeseries.shape)
 
 Nt, Nc = comp_timeseries.shape
 FR2_maps,_,_        = meb.niiLoad(options.dir+options.runID+'.chComp.FR2.nii')
@@ -180,12 +180,12 @@ if (FR2_Nx == FS0_Nx == ICA_Nx) and (FR2_Ny == FS0_Ny == ICA_Ny) and (FR2_Nz == 
     Nz = FR2_Nz
     Nc = FR2_Nc
 else:
-    print "++ ERROR: The dimensions of the different maps do not match. Please correct."
-    print " +        FR2map.shape=$s" % str(FR2_maps.shape)
-    print " +        FS0map.shape=$s" % str(FS0_maps.shape)
+    print("++ ERROR: The dimensions of the different maps do not match. Please correct.")
+    print(" +        FR2map.shape=$s" % str(FR2_maps.shape))
+    print(" +        FS0map.shape=$s" % str(FS0_maps.shape))
     sys.exit()
 
-print "++ INFO: Maps size=[%d,%d,%d,%d]" % (Nx,Ny,Nz,Nc)
+print("++ INFO: Maps size=[%d,%d,%d,%d]" % (Nx,Ny,Nz,Nc))
 
 # Setting up output file
 # ======================
@@ -302,8 +302,8 @@ dataDir      = callDir + '/' + options.dir
 ICAmap_dir   = dataDir+'/meica.'+options.runID+'/Report_Figures/'
 ICAmap_default_path = ICAmap_dir + 'AxSag_Component_XX.png'
 ICAmap_paths = glob(ICAmap_dir+'AxSag*.png')
-print  "++ INFO: Number of ICA Maps: %d" % len(ICAmap_paths)
-print  "++ INFO: Sample File Path: %s" % ICAmap_paths[0]
+print( "++ INFO: Number of ICA Maps: %d" % len(ICAmap_paths))
+print( "++ INFO: Sample File Path: %s" % ICAmap_paths[0])
 available_ICAmaps = ColumnDataSource(data=dict(cID=cID,urls=ICAmap_paths))
 ICAmap_to_display = ColumnDataSource(data=dict(x=[0], y=[0], w=[1246], h=[86], url=[ICAmap_default_path]))
 xdr       = Range1d(start=-630, end=630)
