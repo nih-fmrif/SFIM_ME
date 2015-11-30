@@ -59,7 +59,7 @@ if __name__=='__main__':
     if sys.version_info > (3,0):
         import pickle
     else:
-        import cPickle
+        import cPickle as pickle
     # Parse input parameters
     # ----------------------
     origCommandLine = " ".join(sys.argv[:])
