@@ -387,19 +387,13 @@ def _characterize_this_component(item):
     Kappa_map  = F_R2 * weight_map
     Kappa_map  = Kappa_map/(weight_map[Kappa_mask].mean())
     Kappa_map  = Kappa_map * Kappa_mask           # weigths from the voxels entering the computation
-    if doMedian:
-        Kappa = np.median(Kappa_map[Kappa_mask])
-    else:
-        Kappa = np.mean(Kappa_map[Kappa_mask])
+    Kappa = np.mean(Kappa_map[Kappa_mask])
     
     # Rho Computation
     Rho_map  = F_S0 * weight_map
     Rho_map  = Rho_map/(weight_map[Rho_mask].mean())
     Rho_map  = Rho_map * Rho_mask           # weigths from the voxels entering the computation
-    if doMedian:
-        Rho = np.median(Rho_map[Rho_mask])
-    else:
-        Rho = np.mean(Rho_map[Rho_mask])
+    Rho = np.mean(Rho_map[Rho_mask])
 
     
     # EXTRA CODE
