@@ -23,7 +23,7 @@ from bokeh.models import ColumnDataSource, HoverTool, CustomJS, TapTool, Plot, R
 from bokeh.models.widgets import DataTable, TableColumn, NumberFormatter, BooleanFormatter, CheckboxEditor
 from bokeh.models.widgets import Tabs, Panel, Select
 from bokeh.document import Document
-from bokeh.plotting import figure, gridplot, output_file, show, hplot, vplot
+from bokeh.plotting import figure, gridplot, output_file, show, hplot, vplot, save
 from bokeh.charts import BoxPlot, Histogram
 from scipy.stats import scoreatpercentile
 from glob import glob
@@ -35,7 +35,9 @@ parser = argparse.ArgumentParser('Options')
 parser.add_argument('-meicaDir',   dest = 'dir'  , help = 'directory where the output of meica was saved',default = None)
 parser.add_argument('-runID',      dest = 'runID', help = 'data prefix',default = None)
 parser.add_argument('-picDir',dest = 'pdir' ,      help = 'location of ICA maps (as photos)', default=None)
-parser.add_argument('-nBins',dest = 'Nbins', help = 'Number of bins for the histograms. Default value = 200', default=200, type=int) 
+parser.add_argument('-nBins',dest = 'Nbins', help = 'Number of bins for the histograms. Default value = 200', default=200, type=int)
+parser.add_argument('-saveReport',dest = 'saveReport', help = 'Default is to open the html page. This option saves the html pages without opening.', action='store_true')
+parser.set_defaults(saveReport=False)
 options = parser.parse_args()
 
 Nbins= int(options.Nbins)
@@ -649,5 +651,11 @@ middle    = hplot(sp_ts, sp_fft)
 pl        = vplot(comp_table_DTABLE,top, middle, map_tabs)
 h         = vplot(FC_Tabs, IW_Tabs, KR_Hists)
 p         = hplot(pl,h)
-show(p)
+if options.saveReport:
+    print("Saving Bokeh Report")
+    save(p)
+else:
+    print("Showing Bokeh Report")
+    show(p)
+
 # ==============================================================================

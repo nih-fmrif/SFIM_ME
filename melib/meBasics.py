@@ -387,19 +387,13 @@ def _characterize_this_component(item):
     Kappa_map  = F_R2 * weight_map
     Kappa_map  = Kappa_map/(weight_map[Kappa_mask].mean())
     Kappa_map  = Kappa_map * Kappa_mask           # weigths from the voxels entering the computation
-    if doMedian:
-        Kappa = np.median(Kappa_map[Kappa_mask])
-    else:
-        Kappa = np.mean(Kappa_map[Kappa_mask])
+    Kappa = np.mean(Kappa_map[Kappa_mask])
     
     # Rho Computation
     Rho_map  = F_S0 * weight_map
     Rho_map  = Rho_map/(weight_map[Rho_mask].mean())
     Rho_map  = Rho_map * Rho_mask           # weigths from the voxels entering the computation
-    if doMedian:
-        Rho = np.median(Rho_map[Rho_mask])
-    else:
-        Rho = np.mean(Rho_map[Rho_mask])
+    Rho = np.mean(Rho_map[Rho_mask])
 
     
     # EXTRA CODE
@@ -733,7 +727,7 @@ def characterize_components_se(origTS_pc, data_mean, tes, t2s, S0, mmix, ICA_map
                   can be used as part of the wiegths used duing the averaging. (Nv,)
     Ncpus:        number of available CPUs for multi-processing.
     ICA_maps_thr: threshold for selection of voxels entering the averaging for kappa and rho computation.
-    discard_mask: voxels to be discarded becuase the static field generated erroneous S0 or T2* values.
+    discard_mask: voxels to be discarded because the static field generated erroneous S0 or T2* values.
     writeOuts:    flag to instruct the function to save additional files.
     outDir:       path where the program should write NIFTI and other datasets.
     outPrefix:    prefix for datasets written to disk.
