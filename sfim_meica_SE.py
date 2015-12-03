@@ -145,13 +145,13 @@ if __name__=='__main__':
     # Control for existence of files and directories
     # ----------------------------------------------
     if not os.path.exists(options.data_file):
-        print("++ Error: Datafile [%s] does not exists." % options.data_file)
+        print("++ Error: Datafile [%s] does not exist." % options.data_file)
         sys.exit()
     if options.tes_file!=None and (not os.path.exists(options.tes_file)):
-        print("++ Error: Echo Times file [%s] does not exists." % options.tes_file)
+        print("++ Error: Echo Times file [%s] does not exist." % options.tes_file)
         sys.exit()
     if (not os.path.exists(options.out_dir)) or (not os.path.isdir(options.out_dir)):
-        print("++ Error: Output directory [%s] does not exists." % options.out_dir)
+        print("++ Error: Output directory [%s] does not exist." % options.out_dir)
     
     # Set all output paths
     # --------------------
@@ -204,7 +204,7 @@ if __name__=='__main__':
        else:
           print("++ INFO [Main]: Using user-provided mask.")
           if not os.path.exists(options.data_file):
-             print("++ Error: Provided mask [%s] does not exists." % options.mask_file)
+             print("++ Error: Provided mask [%s] does not exist." % options.mask_file)
              sys.exit()
           mask,_,_       = meb.niiLoad(options.mask_file)
           mask = (mask>0)

@@ -344,6 +344,7 @@ def TSNR(pattern,variables,Ncpus):
         mean_min=np.mean(mins)
 
         pool = Pool(processes=Ncpu)
+        # This call to pool.map causes a multi-threading bug on Mac, see issue #93 in the issue tracker
         pool.map(TSNR_montage, [{'pattern':pattern, 'N':i, 'mean_max':mean_max, 'mean_min':mean_min, 'k':k, 'Figures_made': Figures_made} for i in range(len(pattern[k]))])
         Figures_made += len(pattern[k]) 
     
@@ -367,7 +368,7 @@ if __name__=='__main__':
     # Parse input arguments
     # ---------------------
     parser = argparse.ArgumentParser()
-    parser.add_argument('-pattern_1', dest = 'patt1', help = "Pathway pattern from current directory (or gloabl) to find meica report forms. Runs "
+    parser.add_argument('-pattern_1', dest = 'patt1', help = "Pathway pattern from current directory (or global) to find meica report forms. Runs "
         +    "from a single pattern will be grouped together")
     parser.add_argument('-dest', dest = 'dest', help = 'Directory to place final report form directory, default is "."', default = '.')
     parser.add_argument('-label', dest = 'label', help = 'Label to call final report form directory, default is "meica.Meta_Report"', default = 'meica.Meta_Report')
@@ -402,7 +403,7 @@ if __name__=='__main__':
         Ncpu = int(cpu_count()/2)
     else:
         Ncpu = int(options.Ncpus) 
-    print("-- ME Meta Report Utility version %s --" % __version_)
+    print("-- ME Meta Report Utility version %s --" % __version__)
 
     # Make sure required inputs are provided
     # --------------------------------------
@@ -436,12 +437,12 @@ if __name__=='__main__':
     subprocess.call('mkdir Report_Figures',shell=True)
     subprocess.call('mkdir Report_data',shell=True)
     
-    print("++ INFO: Creating meica_report.csv)
+    print("++ INFO: Creating meica_report.csv")
     variables = table(pattern)
 
     # copy images over from me_ica runs to meica.Meta_Report directory
     # ----------------------------------------------------------------
-    print("++ INFO: Copying figures into %s/Report_Figures" % options.des)
+    print("++ INFO: Copying figures into %s/Report_Figures" % options.dest)
     N=0
     num_report=0
     for k in range(len(pattern)):
