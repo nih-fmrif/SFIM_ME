@@ -113,7 +113,7 @@ One way to explore the output of this program is:
 
 # === FUNCTION: dep_check
 def dep_check():
-    print("++ INFO [Main]: Checking for dependencies....")
+    print "++ INFO [Main]: Checking for dependencies...."
     fails                = 0
     modules = set(["numpy","argparse","scipy","sklearn","multiprocessing","nibabel"])
     
@@ -122,8 +122,8 @@ def dep_check():
             __import__(m)
         except ImportError:
             fails += 1
-            print("++ ERROR [Main]: Can't import Module %s. Please install." % m)
-                
+            print "++ ERROR [Main]: Can't import Module %s. Please install." % m
+
     if fails == 0:
         print(" +              All Dependencies are OK.")
     else:
@@ -173,6 +173,7 @@ def mask4MEdata(data):
     Nx,Ny,Nz,Ne,Nt = data.shape
     mask           = np.ones((Nx,Ny,Nz),dtype=np.bool)
     for i in range(Ne):
+        #tmpmask = (data[:,:,:,i,:] >10).prod(axis=-1,dtype=np.bool)
         tmpmask = (data[:,:,:,i,:] != 0).prod(axis=-1,dtype=np.bool)
 	mask    = mask & tmpmask
     return mask
@@ -303,7 +304,7 @@ def getMeanByPolyFit(data,Ncpus,polort=4):
    return mean
 
 # === FUNCTION: computeQA
-def computeQA(data,tes,Ncpus,data_mean=None):
+def computeQA(data,tes,Ncpus,data_mean=None,S0=None):
     """
     Simple function to compute the amount of variance in the data that is explained by
     the ME fit
@@ -341,8 +342,12 @@ def computeQA(data,tes,Ncpus,data_mean=None):
     linRegObj.fit(drift,residual.T)
     fit2residual      = np.transpose(linRegObj.predict(drift))
     fit2residual_std  = fit2residual.std(axis=1)
-    fit2residual_norm = ( fit2residual - fit2residual.mean(axis=1)[:,np.newaxis] ) / fit2residual.mean(axis=1)[:,np.newaxis]
-    meqa_norm         = fit2residual_norm.std(axis=1)
+    if S0 is None:
+       fit2residual_norm = ( fit2residual ) / fit2residual.mean(axis=1)[:,np.newaxis]
+       meqa_norm         = fit2residual_norm.std(axis=1)
+    else:
+       norm_residual = 100*(fit2residual)/S0[:,np.newaxis]
+       meqa_norm     = norm_residual.std(axis=1)
     return SSE,rankSSE,residual,fit2residual,fit2residual_std,meqa_norm
 
 # === FUNCTION: make_static_maps_opt
@@ -504,7 +509,7 @@ if __name__=='__main__':
     # ---------------------------
     if options.tes!=None:
         print("++ INFO [Main]: Reading echo times from input parameters.")
-        tes      = np.fromstring(options.tes,sep=',',dtype=np.float32)
+        tes      = np.fromstring(options.tes,sep=',',dtype=np.float64)
     if options.tes_file!=None:
         print("++ INFO [Main]: Reading echo times from input echo time file.")
         tes         = np.loadtxt(options.tes_file,delimiter=',')
@@ -553,7 +558,28 @@ if __name__=='__main__':
     #   of small drits in the computation. It should make almost no difference.
     Smean_case02 = getMeanByPolyFit(SME,Ncpus,polort=4)
     SME_mean     = Smean_case02
-    
+    SME_mean_path  = os.path.join(outputDir,options.prefix+'.SME.nii')
+    niiwrite_nv(SME_mean,mask,SME_mean_path, mepi_aff ,mepi_head)   
+ 
+    # =================================================================================================================
+    # =================================                STATIC FIT               =======================================
+    # =================================================================================================================
+    if options.do_static_fit:
+        print "++ INFO [Main]: Static T2* and S0 maps requested..."
+        stFit_S0_path  = os.path.join(outputDir,options.prefix+'.sTE.S0.nii')
+        stFit_t2s_path = os.path.join(outputDir,options.prefix+'.sTE.t2s.nii')
+        stFit_SSE_path = os.path.join(outputDir,options.prefix+'.sTE.SSE.nii')
+        stFit_bVx_path = os.path.join(outputDir,options.prefix+'.sTE.mask.nii')
+        mask_bad_staticFit = np.zeros((Nv,), dtype=bool)
+
+        S0, t2s, SSE, mask_bad_staticFit = make_static_maps_opt(SME_mean,tes,Ncpus,So_init=So_init,T2s_init=T2s_init,So_min=So_min,So_max=So_max,T2s_min=T2s_min, T2s_max=T2s_max)
+
+        mask_bad_staticFit = np.logical_not(mask_bad_staticFit)
+        niiwrite_nv(S0                ,mask,stFit_S0_path, mepi_aff ,mepi_head)
+        niiwrite_nv(t2s               ,mask,stFit_t2s_path,mepi_aff ,mepi_head)
+        niiwrite_nv(SSE               ,mask,stFit_SSE_path,mepi_aff ,mepi_head)
+        niiwrite_nv(mask_bad_staticFit,mask,stFit_bVx_path,mepi_aff ,mepi_head)
+
     # =================================================================================================================
     # =================================                PERFORM QA               =======================================
     # =================================================================================================================
@@ -567,7 +593,10 @@ if __name__=='__main__':
     QA_MEQAnorm_path              = os.path.join(outputDir,options.prefix+'.QAC.MEQAnorm.nii')
 
     print(" +              Computing QA metrics from data.")
-    QA_SSE,QA_SSE_Rank,QA_Residual, QA_ResidualFit, QA_ResidualFit_stdv, QA_MEQAnorm = computeQA(SME,tes,Ncpus,data_mean=SME_mean)
+    if options.do_static_fit:
+       QA_SSE,QA_SSE_Rank,QA_Residual, QA_ResidualFit, QA_ResidualFit_stdv, QA_MEQAnorm = computeQA(SME,tes,Ncpus,data_mean=SME_mean,S0=S0)
+    else:
+       QA_SSE,QA_SSE_Rank,QA_Residual, QA_ResidualFit, QA_ResidualFit_stdv, QA_MEQAnorm = computeQA(SME,tes,Ncpus,data_mean=SME_mean)
     if options.debug:
         niiwrite_nv(QA_SSE_Rank,         mask, QA_SSE_rank_path, mepi_aff ,mepi_head)
         niiwrite_nv(QA_SSE,              mask, QA_SSE_path     , mepi_aff ,mepi_head)
@@ -575,22 +604,3 @@ if __name__=='__main__':
         niiwrite_nv(QA_ResidualFit,      mask, QA_ResidualFit_path, mepi_aff ,mepi_head)
     niiwrite_nv(QA_ResidualFit_stdv, mask, QA_ResidualFit_stdv_path, mepi_aff ,mepi_head)
     niiwrite_nv(QA_MEQAnorm, mask, QA_MEQAnorm_path, mepi_aff ,mepi_head)
- 
-    # =================================================================================================================
-    # =================================                STATIC FIT               =======================================
-    # =================================================================================================================
-    if options.do_static_fit:
-        print("++ INFO [Main]: Static T2* and S0 maps requested...")
-        stFit_S0_path  = os.path.join(outputDir,options.prefix+'.sTE.S0.nii')
-        stFit_t2s_path = os.path.join(outputDir,options.prefix+'.sTE.t2s.nii')
-        stFit_SSE_path = os.path.join(outputDir,options.prefix+'.sTE.SSE.nii')
-        stFit_bVx_path = os.path.join(outputDir,options.prefix+'.sTE.mask.nii')
-        mask_bad_staticFit = np.zeros((Nv,), dtype=bool)
-        
-        S0, t2s, SSE, mask_bad_staticFit = make_static_maps_opt(SME_mean,tes,Ncpus,So_init=So_init,T2s_init=T2s_init,So_min=So_min,So_max=So_max,T2s_min=T2s_min, T2s_max=T2s_max)
-       
-        mask_bad_staticFit = np.logical_not(mask_bad_staticFit)
-        niiwrite_nv(S0                ,mask,stFit_S0_path, mepi_aff ,mepi_head)
-        niiwrite_nv(t2s               ,mask,stFit_t2s_path,mepi_aff ,mepi_head)
-        niiwrite_nv(SSE               ,mask,stFit_SSE_path,mepi_aff ,mepi_head)
-        niiwrite_nv(mask_bad_staticFit,mask,stFit_bVx_path,mepi_aff ,mepi_head) 
