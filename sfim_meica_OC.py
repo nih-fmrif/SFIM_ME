@@ -264,6 +264,8 @@ if __name__=='__main__':
     dTE_TSb4Fit_path = os.path.join(outputDir,options.prefix+'.dTE.TSb4Fit.nii')
     dTE_TSa4Fit_path = os.path.join(outputDir,options.prefix+'.dTE.TSa4Fit.nii')
     dTE_FitRes_path  = os.path.join(outputDir,options.prefix+'.dTE.FitRes.nii')
+    dTE_TSdrho_path  = os.path.join(outputDir,options.prefix+'.dTE.TSdrho.nii')
+    dTE_TSdkappa_path  = os.path.join(outputDir,options.prefix+'.dTE.TSdkappa.nii')
     if (options.doPreTEdn==1):
        if options.reuse and os.path.exists(dTE_TSb4Fit_path) and os.path.exists(dTE_TSa4Fit_path) and os.path.exists(dTE_FitRes_path):
           print(" +              Load pre-existing ME data without non-S0/T2* signals.")
@@ -273,9 +275,11 @@ if __name__=='__main__':
        else: 
           print(" +              Computing dynamic S0/T2* fits.")
           dkappa,drho,fitres,rcond,datahat,_ = meb.linearFit(SME,tes,Ncpu)  
-          meb.niiwrite_nv(SME,    mask,dTE_TSb4Fit_path, mepi_aff ,mepi_head)
-          meb.niiwrite_nv(datahat,mask,dTE_TSa4Fit_path, mepi_aff ,mepi_head)
-          meb.niiwrite_nv(fitres ,mask,dTE_FitRes_path,  mepi_aff ,mepi_head)
+          meb.niiwrite_nv(SME,    mask,dTE_TSb4Fit_path,   mepi_aff ,mepi_head)
+          meb.niiwrite_nv(datahat,mask,dTE_TSa4Fit_path,   mepi_aff ,mepi_head)
+          meb.niiwrite_nv(fitres ,mask,dTE_FitRes_path,    mepi_aff ,mepi_head)
+          meb.niiwrite_nv(drho   ,mask,dTE_TSdrho_path,    mepi_aff ,mepi_head)
+          meb.niiwrite_nv(dkappa ,mask,dTE_TSdkappa_path,  mepi_aff ,mepi_head)
        SME = datahat
        SME_mean = meb.getMeanByPolyFit(SME,polort=7)
     else:
