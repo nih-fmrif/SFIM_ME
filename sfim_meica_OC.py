@@ -148,7 +148,7 @@ if __name__=='__main__':
     # ---------------------------
     if options.tes!=None:
         print("++ INFO [Main]: Reading echo times from input parameters.")
-        tes      = np.fromstring(options.tes,sep=',',dtype=np.float32)
+        tes      = np.fromstring(options.tes,sep=',',dtype=np.float64)
     if options.tes_file!=None:
         print("++ INFO [Main]: Reading echo times from input echo time file.")
         tes         = np.loadtxt(options.tes_file,delimiter=',')
