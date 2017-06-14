@@ -63,7 +63,7 @@ This program requires:
 
 # === FUNCTION: dep_check
 def dep_check():
-    print "++ INFO [Main]: Checking for dependencies...."
+    print ("++ INFO [Main]: Checking for dependencies....")
     fails                = 0
     modules = set(["numpy","argparse","scipy","sklearn","multiprocessing","nibabel"])
     
@@ -72,7 +72,7 @@ def dep_check():
             __import__(m)
         except ImportError:
             fails += 1
-            print "++ ERROR [Main]: Can't import Module %s. Please install." % m
+            print ("++ ERROR [Main]: Can't import Module %s. Please install." % m)
 
     if fails == 0:
         print(" +              All Dependencies are OK.")
