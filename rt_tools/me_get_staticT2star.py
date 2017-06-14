@@ -93,7 +93,7 @@ This program requires:
 
 # === FUNCTION: dep_check
 def dep_check():
-    print "++ INFO [Main]: Checking for dependencies...."
+    print ("++ INFO [Main]: Checking for dependencies....")
     fails                = 0
     modules = set(["numpy","argparse","scipy","sklearn","multiprocessing","nibabel"])
     
@@ -102,7 +102,7 @@ def dep_check():
             __import__(m)
         except ImportError:
             fails += 1
-            print "++ ERROR [Main]: Can't import Module %s. Please install." % m
+            print ("++ ERROR [Main]: Can't import Module %s. Please install." % m)
 
     if fails == 0:
         print(" +              All Dependencies are OK.")
@@ -489,7 +489,7 @@ if __name__=='__main__':
     stFit_t2s_path = os.path.join(outputDir,options.prefix+'.sTE.t2s.nii')
     stFit_bVx_path = os.path.join(outputDir,options.prefix+'.sTE.mask.nii')
     if options.non_linear:
-        print "++ INFO [Main]: Comuting Static T2* and S0 maps via non-linear optimization..."
+        print ("++ INFO [Main]: Comuting Static T2* and S0 maps via non-linear optimization...")
         stFit_SSE_path = os.path.join(outputDir,options.prefix+'.sTE.SSE.nii')
         mask_bad_staticFit = np.zeros((Nv,), dtype=bool)
 
@@ -498,7 +498,7 @@ if __name__=='__main__':
         mask_good_staticFit = np.logical_not(mask_bad_staticFit)
         niiwrite_nv(SSE               ,mask,stFit_SSE_path,mepi_aff ,mepi_head)
     else:
-       print "++ INFO [Main]: Computing Static S0 and T2* maps via log-linear fit..."
+       print ("++ INFO [Main]: Computing Static S0 and T2* maps via log-linear fit...")
        S0, t2s, mask_good_staticFit = make_static_maps(SME,tes)
     niiwrite_nv(S0                ,mask,stFit_S0_path, mepi_aff ,mepi_head)
     niiwrite_nv(t2s               ,mask,stFit_t2s_path,mepi_aff ,mepi_head)
