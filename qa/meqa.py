@@ -113,7 +113,7 @@ One way to explore the output of this program is:
 
 # === FUNCTION: dep_check
 def dep_check():
-    print "++ INFO [Main]: Checking for dependencies...."
+    print ("++ INFO [Main]: Checking for dependencies....")
     fails                = 0
     modules = set(["numpy","argparse","scipy","sklearn","multiprocessing","nibabel"])
     
@@ -122,7 +122,7 @@ def dep_check():
             __import__(m)
         except ImportError:
             fails += 1
-            print "++ ERROR [Main]: Can't import Module %s. Please install." % m
+            print ("++ ERROR [Main]: Can't import Module %s. Please install." % m)
 
     if fails == 0:
         print(" +              All Dependencies are OK.")
@@ -175,7 +175,7 @@ def mask4MEdata(data):
     for i in range(Ne):
         #tmpmask = (data[:,:,:,i,:] >10).prod(axis=-1,dtype=np.bool)
         tmpmask = (data[:,:,:,i,:] != 0).prod(axis=-1,dtype=np.bool)
-	mask    = mask & tmpmask
+        mask    = mask & tmpmask
     return mask
 
 # === FUNCTION: niiwrite_nv
@@ -265,16 +265,16 @@ def linearFit(data, tes,Ncpus, dataMean=None):
     fit_residual = np.zeros((Nv,Nt))
     datahat      = np.zeros((Nv,Ne,Nt))
     if dataMean is  None:
-	dataMean     = data.mean(axis=2)
+       dataMean     = data.mean(axis=2)
     pool   = Pool(processes=Ncpus)
     result = pool.map(linearFit_perVoxel, [{'DeltaS':data[v,:,:] - np.tile(dataMean[v,:].reshape((Ne,1)),Nt),'Smean':dataMean[v,:],'tes':tes,'Ne':int(Ne),'Nt':int(Nt)} for v in np.arange(Nv)]) 
     
     for v in range(Nv):
-	rcond[v]          = result[v]['rcond'] 
-	drho[v,:]         = result[v]['drho'] 
-	dkappa[v,:]       = result[v]['dkappa'] 
-	fit_residual[v,:] = result[v]['fit_residual'] 
-	datahat[v,:,:]    = result[v]['datahat'] 
+      rcond[v]          = result[v]['rcond'] 
+      drho[v,:]         = result[v]['drho'] 
+      dkappa[v,:]       = result[v]['dkappa'] 
+      fit_residual[v,:] = result[v]['fit_residual'] 
+      datahat[v,:,:]    = result[v]['datahat'] 
     return dkappa,drho,fit_residual,rcond,datahat
 
 # === FUNCTION: getMeanByPolyFit	
@@ -521,7 +521,7 @@ if __name__=='__main__':
     print("++ INFO [Main]: Loading ME dataset....")
     mepi_data,mepi_aff,mepi_head  = niiLoad(options.data_file)
     Nx,Ny,Nz,Nt                   = mepi_data.shape
-    Nz                            = Nz/Ne # Because the input was the Z-concatenated dataset
+    Nz                            = int(Nz/Ne) # Because the input was the Z-concatenated dataset
     mepi_data                     = mepi_data.reshape((Nx,Ny,Nz,Ne,Nt),order='F')
     print(" +              Dataset dimensions: [Nx=%i,Ny=%i,Nz=%i,Ne=%i,Nt=%i]" % (Nx,Ny,Nz,Ne,Nt))
     
@@ -565,7 +565,7 @@ if __name__=='__main__':
     # =================================                STATIC FIT               =======================================
     # =================================================================================================================
     if options.do_static_fit:
-        print "++ INFO [Main]: Static T2* and S0 maps requested..."
+        print ("++ INFO [Main]: Static T2* and S0 maps requested...")
         stFit_S0_path  = os.path.join(outputDir,options.prefix+'.sTE.S0.nii')
         stFit_t2s_path = os.path.join(outputDir,options.prefix+'.sTE.t2s.nii')
         stFit_SSE_path = os.path.join(outputDir,options.prefix+'.sTE.SSE.nii')
