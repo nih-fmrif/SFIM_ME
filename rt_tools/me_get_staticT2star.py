@@ -441,7 +441,7 @@ if __name__=='__main__':
     print("++ INFO [Main]: Loading ME dataset....")
     mepi_data,mepi_aff,mepi_head  = niiLoad(options.data_file)
     Nx,Ny,Nz,Nt                   = mepi_data.shape
-    Nz                            = Nz/Ne # Because the input was the Z-concatenated dataset
+    Nz                            = int(Nz/Ne) # Because the input was the Z-concatenated dataset
     mepi_data                     = mepi_data.reshape((Nx,Ny,Nz,Ne,Nt),order='F')
     print(" +              Dataset dimensions: [Nx=%i,Ny=%i,Nz=%i,Ne=%i,Nt=%i]" % (Nx,Ny,Nz,Ne,Nt))
     
