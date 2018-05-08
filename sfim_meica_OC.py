@@ -27,7 +27,6 @@ if __name__ == '__main__':
     print("Program start time: %s" % datetime.now().isoformat())
     print("--------------------------------------------------")
 
-
     import meUtils as meu
     import meBasics as meb
     if sys.version_info > (3, 0):
@@ -174,10 +173,6 @@ if __name__ == '__main__':
                               " status").read())
     except:
         pass
-
-
-
-
 
     krRatio = float(options.krRatio)
     ica_zthr = float(options.ica_zthr)
@@ -521,59 +516,91 @@ if __name__ == '__main__':
        voxelwiseQA=QA_SSE_Rank
        print("++ INFO [Main]: QA weigths were used during kappa/rho computation")
 
-    fica_feats = meb.characterize_components(SME_pc, SME_mean, tes, t2s, S0, fica_mmix_zsc, fica_out, voxelwiseQA, Ncpu, ICA_maps_thr=ica_zthr, F_MAX=Fmax, Z_MAX=Zmax,
-                 outDir=options.out_dir,
-                 outPrefix=options.prefix,
-                 mask=mask,writeOuts=options.save_extra,
-                 aff=mepi_aff, head=mepi_head, discard_mask=mask_bad_staticFit,
-                 doFM=options.doFM)
+    fica_feats = meb.characterize_components(SME_pc, SME_mean, tes, t2s, S0,
+                                             fica_mmix_zsc, fica_out,
+                                             voxelwiseQA, Ncpu,
+                                             ICA_maps_thr=ica_zthr, F_MAX=Fmax,
+                                             Z_MAX=Zmax,
+                                             outDir=options.out_dir,
+                                             outPrefix=options.prefix,
+                                             mask=mask,
+                                             writeOuts=options.save_extra,
+                                             aff=mepi_aff, head=mepi_head,
+                                             discard_mask=mask_bad_staticFit,
+                                             doFM=options.doFM)
     pd.options.display.float_format = '{:,.2f}'.format
     print(fica_feats)
     # Selection good and bad components
     # ---------------------------------
     print("++ INFO [Main]: Component Selection...")
 
+    # Component selection based on elbows in sorted values for kappa and rho
+    # values. The moderate linear projection method for elbow estimation is
+    # used to define which kappa values to keep and an agressive Curvature
+    # elbow estimation is used to define which rho values to reject
+    fica_psel, accepted, rejected = meb.SelectGoodComponents(fica_feats)
+    print(" + Unsorted List of accepted components=%s" % str(accepted))
+    print(" + Unsorted List of rejected components=%s" % str(rejected))
 
-    # (1) Selection based on kappa/rho ratio
-    fica_psel      = (fica_feats['K/R']>krRatio).get_values()
-    accepted       = fica_feats['cID'][fica_psel].get_values().astype(int)
-    print(" +              Unsorted List of accepted components=%s" % str(accepted))
-
-    # (2) Additional selection based on variance
-    if (options.useVarCriteria ==1):
-       #fica_pselV  = np.ones((Nc,))
-       #comp_idx_byVar      = (fica_feats[np.argsort(fica_feats[:,3]),0][::-1]).astype('int')
-       #var_elbow  = meb.getelbow(fica_feats[comp_idx_byVar,3])
-       #rm_highvar = comp_idx_byVar[:meb.getelbow(fica_feats[comp_idx_byVar,3])]
-       #print(" +              Removed due to excessive variance: %s" %(str(np.sort(rm_highvar))))
-       #fica_psel[rm_highvar] = 0
-       #print(" +              Unsorted List of accepted components after var criteria=%s" % (str(np.where(fica_psel==1)[0])))
-        print(" ++++++++++++++++++ NOT AVAILABLE SINCE SWITCH TO FEATURES AS PANDA  ++++++++++++++++++++++ ")
-    else:
-       print(" +              Variance criteria not active [OFF].")
+    # # (1) Selection based on kappa/rho ratio
+    # fica_psel      = (fica_feats['K/R']>krRatio).get_values()
+    # accepted       = fica_feats['cID'][fica_psel].get_values().astype(int)
+    # print(" + Unsorted List of accepted components=%s" % str(accepted))
+    #
+    # # (2) Additional selection based on variance
+    # if (options.useVarCriteria ==1):
+    #    #fica_pselV  = np.ones((Nc,))
+    #    #comp_idx_byVar
+    #    #   = (fica_feats[np.argsort(fica_feats[:,3]),0][::-1]).astype('int')
+    #    #var_elbow  = meb.getelbow(fica_feats[comp_idx_byVar,3])
+    #    #rm_highvar =
+    #    #         comp_idx_byVar[:meb.getelbow(fica_feats[comp_idx_byVar,3])]
+    #    #print(" + Removed due to excessive variance: %s"
+    #    #      %(str(np.sort(rm_highvar))))
+    #    #fica_psel[rm_highvar] = 0
+    #    #print(" + Unsorted List of accepted components after var criteria=%s"
+    #    #      % (str(np.where(fica_psel==1)[0])))
+    #     print(" ++ NOT AVAILABLE SINCE SWITCH TO FEATURES AS PANDA  ++ ")
+    # else:
+    #    print(" +              Variance criteria not active [OFF].")
 
     # Generating  output time-series
     # ------------------------------
     print("++ INFO [Main]: Generating output time series...")
-    list_goodComp = np.where(fica_psel==1)[0].tolist()
-    list_badComp  = np.where(fica_psel==0)[0].tolist()
-    octs_nomean   = octs - octs.mean(axis=-1)[:,np.newaxis]
-    beta          = np.linalg.lstsq(fica_mmix.T, octs_nomean.T)[0].T # MAY WANT TO CHANGE THIS TO MMIX_ZSC, BUT THEN CHANGE THINGS BELOW TOO
-    goodTS        = np.dot(beta[:,list_goodComp], fica_mmix[list_goodComp,:])
-    badTS         = np.dot(beta[:,list_badComp], fica_mmix[list_badComp,:])
-    denoisedTS    = octs - badTS
-    goodTS        = pca_scaler.inverse_transform(goodTS.T).T
-    badTS         = pca_scaler.inverse_transform(badTS.T).T
-    meu.niiwrite_nv(goodTS,mask,options.out_dir+options.prefix+'.OUT.gTS.nii',mepi_aff,mepi_head)
-    meu.niiwrite_nv(badTS, mask,options.out_dir+options.prefix+'.OUT.bTS.nii',mepi_aff,mepi_head)
-    meu.niiwrite_nv(beta ,mask ,options.out_dir+'betas_OC.nii',mepi_aff ,mepi_head)
-    meu.niiwrite_nv(denoisedTS       ,mask ,options.out_dir+'dn_ts_OC.nii',mepi_aff ,mepi_head)
+    list_goodComp = np.where(fica_psel == 1)[0].tolist()
+    list_badComp = np.where(fica_psel == 0)[0].tolist()
+    octs_nomean = octs - octs.mean(axis=-1)[:, np.newaxis]
+    # MAY WANT TO CHANGE fica_mmx TO MMIX_ZSC, BUT THEN CHANGE THINGS BELOW TOO
+    # MAY ALSO WANT DO FOLLOW RICK REYNOLDS IDEA OF ORTHOGONALIZING THE FIT
+    # MATRIX FROM THE BADTS SO THAT NO SHARED VARIANCE BETWEEN BAD AND GOOD
+    # COMPONENTES IS REMOVED
+    beta = np.linalg.lstsq(fica_mmix.T, octs_nomean.T)[0].T
+    goodTS = np.dot(beta[:, list_goodComp], fica_mmix[list_goodComp, :])
+    badTS = np.dot(beta[:, list_badComp], fica_mmix[list_badComp, :])
+    denoisedTS = octs - badTS
+    goodTS = pca_scaler.inverse_transform(goodTS.T).T
+    badTS = pca_scaler.inverse_transform(badTS.T).T
+    meu.niiwrite_nv(goodTS, mask,
+                    options.out_dir+options.prefix+'.OUT.gTS.nii',
+                    mepi_aff, mepi_head)
+    meu.niiwrite_nv(badTS, mask, options.out_dir+options.prefix+'.OUT.bTS.nii',
+                    mepi_aff, mepi_head)
+    meu.niiwrite_nv(beta, mask, options.out_dir+'betas_OC.nii',
+                    mepi_aff, mepi_head)
+    meu.niiwrite_nv(denoisedTS, mask, options.out_dir+'dn_ts_OC.nii',
+                    mepi_aff, mepi_head)
 
-    ## Output some informative metrics
-    ## -------------------------------
-    var_orig      = (np.reshape(SME_nm,(Nv*Ne,Nt),order='F')**2).sum()/Ne #var_orig      = (Sdemean**2).sum()/Ne
-    var_afterPCA  = ((octs_afterPCA-octs_afterPCA.mean(axis=-1)[:,np.newaxis])**2.).sum()
+    # Output some informative metrics
+    # -------------------------------
+    var_orig = (np.reshape(SME_nm, (Nv*Ne, Nt), order='F')**2).sum()/Ne
+    # Formerly var_orig      = (Sdemean**2).sum()/Ne
+    var_afterPCA = ((octs_afterPCA -
+                     octs_afterPCA.mean(axis=-1)[:, np.newaxis])**2.).sum()
 
-    meb.writeCompTable(origCommandLine, options.out_dir, options.data_file, fica_feats, 100*(var_afterPCA/var_orig),100*(var_afterPCA/var_orig),100*(var_afterPCA/var_orig), fica_psel, Nt, 6)
+    meb.writeCompTable(origCommandLine, options.out_dir, options.data_file,
+                       fica_feats, 100*(var_afterPCA/var_orig),
+                       100*(var_afterPCA/var_orig),
+                       100*(var_afterPCA/var_orig),
+                       fica_psel, Nt, 6)
     print("++ INFO [Main]: Successfull Completion of the Analysis.")
     print("++ INFO [Main]: =======================================")

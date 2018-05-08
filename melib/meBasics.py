@@ -79,44 +79,218 @@ def computeFFT(ts,TR):
         freq     = freq[int(Nt/2):]
     return FFT, freq
 
-def getelbow(ks):
-   nc = ks.shape[0]
-   coords = np.array([np.arange(nc),ks])
-   p  = coords - np.tile(np.reshape(coords[:,0],(2,1)),(1,nc))
-   b  = p[:,-1]
-   b_hat = np.reshape(b/np.sqrt((b**2).sum()),(2,1))
-   proj_p_b = p - np.dot(b_hat.T,p)*np.tile(b_hat,(1,nc))
-   d = np.sqrt((proj_p_b**2).sum(axis=0))
-   k_min_ind = d.argmax()
-   k_min  = ks[k_min_ind]
-   return k_min_ind
 
-def getMeanByPolyFit(data,polort=4):
-   """
-   This function computes the mean across time for all voxels and echoes using
-   legendre polynomial fitting. More robust against slow dirfts
+def getelbow_meanvar(ks, val=False):
+    """Elbow using mean/variance method - conservative
 
-   Parameters
-   ----------
-   data:   ME dataset (Nv,Ne,Nt)
-   polort: order for the legendre polynomials to fit. Default=4
-   Returns
-   -------
-   mean:   (Nv,Ne)
-   """
-   Nv,Ne,Nt = data.shape
-   aux = np.reshape(data.copy(),(Nv*Ne,Nt))
-   drift = np.zeros((Nt,polort))
-   x     = np.linspace(-1,1-2/Nt,Nt)
-   for n in range(polort):
-      drift[:,n]=np.polyval(legendre(n),x)
-   # 2. Fit polynomials to residuals
-   linRegObj= LinearRegression(normalize=False,fit_intercept=False)
-   linRegObj.fit(drift,aux.T)
-   mean    = np.reshape(linRegObj.coef_[:,0],(Nv,Ne))
-   return mean
+    This function was copied from another repository on May 7, 2018 (11282c5)
+    https://github.com/ME-ICA/tedana/blob/master/tedana/interfaces/tedana.py
 
-def make_optcom(data,t2s,tes):
+    Parameters
+    ----------
+    ks : array-like (presorted)
+    val : bool, optional
+        Default is False
+    Returns
+    -------
+    array-like
+        Either the elbow index (if val is True) or the values at the elbow
+        index (if val is False)
+    """
+    # ks = np.sort(ks)[::-1]
+    nk = len(ks)
+    temp1 = [(ks[nk - 5 - ii - 1] > ks[nk - 5 - ii:nk].mean()
+              + 2 * ks[nk - 5 - ii:nk].std())
+             for ii in range(nk - 5)]
+    ds = np.array(temp1[::-1], dtype=np.int)
+    dsum = []
+    c_ = 0
+    for d_ in ds:
+        c_ = (c_ + d_) * d_
+        dsum.append(c_)
+    e2 = np.argmax(np.array(dsum))
+    elind = np.max([getelbow_linproj(ks), e2])
+
+    if val:
+        return ks[elind]
+    else:
+        return elind
+
+
+def getelbow_linproj(ks, val=False):
+    """Elbow using linear projection method - moderate
+
+    This function was copied from another repository on May 7, 2018 (11282c5)
+    https://github.com/ME-ICA/tedana/blob/master/tedana/interfaces/tedana.py
+
+    Parameters
+    ----------
+    ks : array-like (presorted)
+    val : bool, optional
+        Default is False
+    Returns
+    -------
+    array-like
+        Either the elbow index (if val is True) or the values at the elbow
+        index (if val is False)
+    """
+    # ks = np.sort(ks)[::-1]
+    n_components = ks.shape[0]
+    coords = np.array([np.arange(n_components), ks])
+    p = coords - np.tile(np.reshape(coords[:, 0], (2, 1)), (1, n_components))
+    b = p[:, -1]
+    b_hat = np.reshape(b / np.sqrt((b ** 2).sum()), (2, 1))
+    proj_p_b = p - np.dot(b_hat.T, p) * np.tile(b_hat, (1, n_components))
+    d = np.sqrt((proj_p_b ** 2).sum(axis=0))
+    k_min_ind = d.argmax()
+
+    if val:
+        return ks[k_min_ind]
+    else:
+        return k_min_ind
+
+
+def getelbow_curvature(ks, val=False):
+    """Elbow using curvature - aggressive
+
+    This function was copied from another repository on May 7, 2018 (11282c5)
+    https://github.com/ME-ICA/tedana/blob/master/tedana/interfaces/tedana.py
+
+    Parameters
+    ----------
+    ks : array-like (presorted)
+    val : bool, optional
+        Default is False
+    Returns
+    -------
+    array-like
+        Either the elbow index (if val is True) or the values at the elbow
+        index (if val is False)
+    """
+    # ks = np.sort(ks)[::-1]
+    dKdt = ks[:-1] - ks[1:]
+    dKdt2 = dKdt[:-1] - dKdt[1:]
+    curv = np.abs((dKdt2 / (1 + dKdt[:-1]**2.) ** (3. / 2.)))
+    curv[np.isnan(curv)] = -1 * 10**6
+    maxcurv = np.argmax(curv) + 2
+
+    if val:
+        return(ks[maxcurv])
+    else:
+        return maxcurv
+
+
+def getelbow(ks, Method='linproj', val=False):
+    """
+    Take a sorted series of values, stored in ks and find an inflection
+    point in those values (the elbow). There are several methods for
+    finding the elbow with some more agressive than others. More aggressive
+    methods are more likely to set the elbow that fewer values are larger
+    than the elbow
+
+    Parameters
+    ----------
+    ks : array-like list of Values
+    Method: Options for the elbow finding method.
+        'meanvar'   Mean/Variance method - conservative
+        'linproj'   Linear projection method - moderate [DEFAULT]
+        'curvature' Curvature method - agressive
+    val : bool, optional
+          Used to define if the elbow value or index is returned
+          Default is False (return the index)
+
+    Returns
+    -------
+    elbowval is the index for the elbow from the shorted ks array
+    (if val is True) or the values at the elbow index (if val is False)
+    """"
+    ks = np.sort(ks)[::-1]
+
+    if Method.lower() == 'meanvar':
+        elbowval = getelbow_meanvar(ks, val)
+    elif Method.lower() == 'linproj':
+        elbowval = getelbow_linproj(ks, val)
+    elif Method.lower() == 'curvature':
+        elbowval = getelbow_curvature(ks, val)
+    else:
+        print("++ Error: Method provided to getelbow not found: %s" % Method)
+
+    return elbowval
+
+# def getelbow(ks):
+#    nc = ks.shape[0]
+#    coords = np.array([np.arange(nc),ks])
+#    p  = coords - np.tile(np.reshape(coords[:,0],(2,1)),(1,nc))
+#    b  = p[:,-1]
+#    b_hat = np.reshape(b/np.sqrt((b**2).sum()),(2,1))
+#    proj_p_b = p - np.dot(b_hat.T,p)*np.tile(b_hat,(1,nc))
+#    d = np.sqrt((proj_p_b**2).sum(axis=0))
+#    k_min_ind = d.argmax()
+#    k_min  = ks[k_min_ind]
+#    return k_min_ind
+
+
+def SelectGoodComponents(fica_feats, SelectionCriteria='method1',
+                         krRatio=None):
+    """
+    This function uses the ICA component features to decide which components
+    are more BOLD-like and should be make_optcom
+
+    Parameters
+    ----------
+    fica_feats: Pandas data structure with information for each component
+                It is calculated in characterize_components()
+    SelectionCriteria: There are several algorithms for selecting criteria.
+        This variable should be assigned the name of the desired algorithms
+        The options are:
+        'Method1': A basic elbow-based criteria
+            (Method1 is a placeholder name until I think of a logical naming
+            structure for the various selection options)
+
+    Returns
+    -------
+    fica_psel: The idices in arrays for the accepted components
+    accepted: The component IDs of the accepted Components
+    rejected: The component IDs of the rejected Components
+    """
+    if SelectionCriteria.lower() == 'method1':
+        KappaCutOff = getelbow(fica_feats['Kappa'], Method='linproj', 'True')
+        RhoCutOff = getelbow(fica_feats['Rho'], Method='curvature', 'True')
+        fica_psel = ((fica_feats['Kappa'] >= KappaCutOff) or
+                     (fica_feats['Rho'] < RhoCutOff)).get_values()
+        accepted = fica_feats['cID'][fica_psel].get_values().astype(int)
+        rejected = np.setdiff1d(fica_feats['cID'].get_values().astype(int),
+                                accepted)
+
+    return fica_psel, accepted, rejected
+
+
+def getMeanByPolyFit(data, polort=4):
+    """
+    This function computes the mean across time for all voxels and echoes using
+    legendre polynomial fitting. More robust against slow dirfts
+
+    Parameters
+    ----------
+    data:   ME dataset (Nv,Ne,Nt)
+    polort: order for the legendre polynomials to fit. Default=4
+    Returns
+    -------
+    mean:   (Nv,Ne)
+    """
+    Nv, Ne, Nt = data.shape
+    aux = np.reshape(data.copy(), (Nv*Ne, Nt))
+    drift = np.zeros((Nt, polort))
+    x = np.linspace(-1, 1-2/Nt, Nt)
+    for n in range(polort):
+        drift[:, n] = np.polyval(legendre(n), x)
+    # 2. Fit polynomials to residuals
+    linRegObj = LinearRegression(normalize=False, fit_intercept=False)
+    linRegObj.fit(drift, aux.T)
+    mean = np.reshape(linRegObj.coef_[:, 0], (Nv, Ne))
+    return mean
+
+def make_optcom(data, t2s, tes):
     """
     Generates the optimally combined time series.
 
